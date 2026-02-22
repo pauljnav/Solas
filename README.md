@@ -1,6 +1,6 @@
 # Solas: The Intent-Driven Language
 
-**Solas** (n.) /'sɔ-ləs/ – *The point where intent meets clarity.*
+**Solas** (n.) /soˈlas/ – *The point where intent meets clarity.*
 
 In legacy programming, logic is often obscured by the "darkness" of boilerplate and rigid syntax. **Solas** is the light that strips these shadows away. It represents a paradigm shift from instructing a machine *how* to work to showing it *what* to achieve.
 
