@@ -28,7 +28,7 @@ step    : Define the transformation for each 'grow' increment.
 @core   : System runtime and hardware context.
 @env    : Variable environment and secrets.
 
-# RESOURCE: @net (The Pulse)
+# RESOURCE: @net
 
 [CONNECTORS]
 pulse(url)    : Heartbeat check; returns latency or status.
@@ -43,6 +43,21 @@ mirror(url)   : Secondary source for 'refract' or 'drift' scenarios.
 [BEHAVIORS]
 - All @net calls are asynchronous by default.
 - If no protocol is specified (e.g., https://), @net negotiates the fastest available path.
+
+# RESOURCE: @data
+
+[ACTIONS]
+store(payload) : Persists data to the identified resource.
+recall(id)     : Retrieves data by its unique identifier.
+drop(id)       : Removes data from persistent storage.
+
+[MODIFIERS]
+as(format)     : Defines the storage encoding (JSON, CSV, Blob).
+on(location)   : Specific target (disk, cloud, cache).
+
+[BEHAVIORS]
+- @data is atomic; a store operation either completes fully or triggers a drift.
+- By default, @data.recall returns a 'shape' matching the last stored version.
 
 # 4. DATA SHAPING (Types)
 // Solas is implicitly typed but explicitly shaped.
