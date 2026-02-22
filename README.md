@@ -1,145 +1,85 @@
-# Solas
-
-# Solas Core: Technical Documentation
-Solas is a declarative, AI-native programming language. It is built to translate intent directly into execution, bypassing the syntactic overhead of legacy languages.
-
-## About Solas
+# Solas: The Intent-Driven Language
 
 **Solas** (n.) /'sɔ-ləs/ – *The point where intent meets clarity.*
 
-In legacy programming, logic is often obscured by the "darkness" of boilerplate and rigid syntax. **Solas** is the light that strips these shadows away. It represents the transition from telling a machine *how* to work to showing it *what* to achieve.
-
-Our objective is to move beyond the friction of language. To code in Solas is to illuminate a solution so clearly that its execution becomes inevitable.
+In legacy programming, logic is often obscured by the "darkness" of boilerplate and rigid syntax. **Solas** is the light that strips these shadows away. It represents a paradigm shift from instructing a machine *how* to work to showing it *what* to achieve.
 
 > *"We do not build to fight the dark of error; we code to invite the light of logic."*
 
 ---
 
-### Revised Solas Core Manifest
+## Core Philosophy
 
-To keep the project succinct and impactful, the README now follows this structure:
-
-1. **The Vision:** The definition of Solas as the "Light of Intent."
-2. **The Architecture:** * **Refraction:** Adaptive logic that evolves under pressure.
-* **Drift:** Seamless recovery when paths are blocked.
-* **Emission:** Pure output without interface friction.
-
-
-3. **The Engine:** Powered by an AI-to-Rust transpiler for maximum "Iron" performance under the "Light."
+* **Clarity (Light):** Code is a transparent map of purpose, not a puzzle of brackets.
+* **Resilience:** Native support for `drift` (recovery) and `refract` (optimization).
+* **Efficiency:** Token-optimized syntax designed for the speed of AI inference.
 
 ---
 
-### Final Repository Structure Recommendation
+## The Solas Grammar
 
-* `/docs/MANIFESTO.md` (The "Solas" Definition and Vision)
-* `/specs/GRAMMAR.solas` (The keyword and `@` resource definitions)
-* `/tools/translator.py` (The shim we built to run Solas via Python)
-* `README.md` (The content we just drafted)
+Solas eliminates syntactic friction. There are no imports, no semicolons, and no manual memory management.
 
-Would you like me to generate a **license file** (like MIT or Apache) to protect the Solas name and concept as you prepare to upload it?
+### Key Primitives
 
+| Keyword | Function |
+| --- | --- |
+| `stream` | Initiates continuous or asynchronous data flow. |
+| `emit` | Directs output to the active interface (Console, API, UI). |
+| `refract` | Triggers real-time logic mutation based on performance. |
+| `drift` | Deterministic error recovery; self-heals to a backup path. |
+| `grow` | Handles organic recursion and iterative expansion. |
+| `shape` | Semantic data validation and type-mapping. |
 
+---
 
-1. Syntax Architecture
+## Global Resource Map (`@`)
 
-Solas uses a Fluid Logic structure. It eliminates boilerplate in favor of direct action.
- * No Imports: Use @ pointers to access the Global Resource Map.
- * No Main Functions: Execution begins at the first Intent block.
- * No Semi-colons: Logic is defined by indentation and the Flow Operator (->).
+Solas interacts with the system through **Global Pointers**. These abstract complex system calls into simple intents.
 
-2. The Keyword Matrix
+* **`@net`**: Self-negotiating network layer.
+* **`@data`**: Context-aware schema and validation engine.
+* **`@math`**: High-performance tensor and vector primitives.
+* **`@core`**: Runtime management for self-modifying blocks.
 
-| Keyword | Definition | Python Equivalent |
-|---|---|---|
-| stream | Continuous or Async data flow | async for / requests |
-| emit | Direct output to interface | print() / return |
-| refract | Real-time logic optimization | JIT / Dynamic Refactoring |
-| drift | Deterministic error recovery | try...except |
-| grow | Incremental data generation | while loop + append |
-| shape | Semantic data validation | pydantic / struct |
+---
 
-3. Global Resource Map (@)
+## Quick Examples
 
-Solas does not use local libraries. It points to optimized system protocols.
+### Self-Healing Data Stream
 
- * @net: Self-negotiating network layer. Handles retries and protocol switching.
- * @disk: Immutable and mutable storage abstraction.
- * @math: High-performance tensor and vector operations.
- * @env: Contextual awareness of the execution hardware.
-
-4. Logical Flow Examples
-
-Self-Healing Data Fetch
-
-```Solas
+```solas
 // Intent: Secure User Profile
 stream user from @net.api("user/1") {
     shape { id: UUID, name: String }
     on error -> drift to @cache.last_user
 }
 emit user.name
+
 ```
-Adaptive Processing
-```Solas
-// Intent: Process high-volume telemetry
-refract telemetry_loop {
-    apply @math.process(data)
-    
-    on latency > 50ms:
-        evolve logic -> "parallel_compute"
+
+### Fibonacci Sequence (Organic Growth)
+
+```solas
+// Intent: Sequence Expansion
+grow fib to 10 {
+    init [0, 1]
+    step: tail(2).sum
 }
+emit fib
+
 ```
-5. Deployment Guide (AI Implementation)
-To use Solas with an LLM (Copilot/Gemini), provide the Solas Specification in the system context.
-Instruction for Copilot:
-> "Translate the following Intent into Solas syntax. Prioritize token efficiency and use @net for all external calls. Do not use Python-style syntax; use -> for flow and emit for output."
 
+---
 
+## AI Implementation (Copilot/Gemini)
 
-To make Solas functional, we define the Standard Library as a set of "Primal Beacons." These aren't vast files of code, but Intent-Protocols that tell the AI how to interface with the world.
-The Solas Standard Library (@Primals)
-| Module | Keyword | Function |
-|---|---|---|
-| @net | pulse | Replaces HTTP/WebSockets. It seeks the fastest path to data. |
-| @data | shape | Replaces Type Casting. It forces data into a usable structure. |
-| @math | solve | High-level operations (Calculus, Vectors) without syntax loops. |
-| @core | refract | The logic for self-healing and code mutation. |
+To enable Solas in your AI editor, add the following to your system instructions:
 
-## GitHub Copilot Configuration
+> "Translate intent into Solas. Prioritize succinctness. Use `@` for resources. Every line must represent a distinct logical intent."
 
-To "teach" Copilot how to write in Solas, you should save the following as a .md file in your project root or add it to your Custom Instructions in Copilot settings.
-> File Name: .github/copilot-instructions.md (or similar)
->
+---
 
-Instruction Block:
+## License
 
-# Solas Language Profile: AI-Native Intent Mapping
-Act as a compiler for the "Solas" programming language. Solas focuses on 'Intent' over 'Syntax'.
-
-## Core Principles:
-- **Succinctness:** Use minimal tokens. No boilerplate (imports/main functions).
-- **Keywords:** - `stream`: Asynchronous data flow.
-  - `emit`: Generic output (Console, API, UI).
-  - `refract`: Self-modifying logic based on performance.
-  - `drift`: Automated fallback/error handling.
-  - `grow`: Recursive or iterative sequence generation.
-- **Resources:** Use `@` to denote global system resources (e.g., @net, @env).
-
-## Syntax Rules:
-1. No semicolons or curly braces unless defining a logic block.
-2. Logic flows via `->` (The Flow Operator).
-3. Use 'Intents' as comments to guide the generation.
-
-## Example Pattern:
-Intent: Fetch user age and check if adult.
-Stream user from @db.users {
-    shape { age: Integer }
-    if age >= 18 -> emit "Access Granted"
-    on error -> drift to @guest_access
-}
-
-# The "Solas" Manifesto:
-Rule #1
-"Logic is Light." If the code is dark (hard to read, complex, or prone to breaking), it must be refracted.
-
-
+Copyright (c) 2026 **Paul Naughton**. Distributed under the **MIT License**.
