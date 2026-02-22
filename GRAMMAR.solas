@@ -28,6 +28,22 @@ step    : Define the transformation for each 'grow' increment.
 @core   : System runtime and hardware context.
 @env    : Variable environment and secrets.
 
+# RESOURCE: @net (The Pulse)
+
+[CONNECTORS]
+pulse(url)    : Heartbeat check; returns latency or status.
+stream(url)   : Opens a continuous data pipe.
+request(url)  : Single-shot data acquisition.
+
+[MODIFIERS]
+secure(key)   : Injects auth headers (Bearer/OAuth) from @env.
+retry(n)      : Automated exponential backoff up to n times.
+mirror(url)   : Secondary source for 'refract' or 'drift' scenarios.
+
+[BEHAVIORS]
+- All @net calls are asynchronous by default.
+- If no protocol is specified (e.g., https://), @net negotiates the fastest available path.
+
 # 4. DATA SHAPING (Types)
 // Solas is implicitly typed but explicitly shaped.
 shape {
