@@ -1,0 +1,83 @@
+// Solas Language Specification v1.0
+
+# 1. LEXICAL STRUCTURE
+Tokens: UTF-8
+Whitespace: Significant (Used for block nesting)
+Comments: // (Single line)
+
+# 2. CORE PRIMITIVES (Keywords)
+[FLOW]
+stream  : Define async/continuous data input.
+emit    : Route data to the primary output buffer.
+->      : The 'Flow Operator'. Maps intent to action.
+
+[LOGIC]
+refract : Define a self-modifying logic gate.
+drift   : Define an automated fallback path (Error Handling).
+shape   : Constrain data to a semantic structure.
+
+[ITERATION]
+grow    : Execute incremental expansion or recursion.
+init    : Set the starting state for a 'grow' block.
+step    : Define the transformation for each 'grow' increment.
+
+# 3. GLOBAL RESOURCE MAP (@)
+@net    : Network protocols (HTTPS, TCP, UDP).
+@data   : Persistent storage and databases.
+@math   : Linear algebra and arithmetic engines.
+@core   : System runtime and hardware context.
+@env    : Variable environment and secrets.
+
+# 4. DATA SHAPING (Types)
+// Solas is implicitly typed but explicitly shaped.
+shape {
+    field: String
+    value: Number
+    status: Boolean
+    id: UUID
+}
+
+# 5. BLOCK STRUCTURE
+// Blocks are defined by keywords and indentation.
+// No curly braces required for standard flows.
+
+[Pattern]
+[Keyword] [Source/Target] {
+    [Logic Block]
+}
+
+# 6. OPERATIONAL HIERARCHY
+1. Intent Mapping (Natural Language Comment)
+2. Resource Acquisition (@)
+3. Data Shaping (shape)
+4. Execution (emit/grow/refract)
+5. Resilience (on error -> drift)
+
+# 7. OPERATIONAL LOGIC (The Rules of Light)
+[REFRACTION RULES]
+- A 'refract' block must contain a 'trigger' and an 'evolution'.
+- Trigger syntax: 'on [condition]:'
+- Evolution syntax: 'evolve logic -> "[new_strategy]"'
+
+[DRIFT RULES]
+- 'drift' is the mandatory exit path for a broken stream.
+- Syntax: 'on error -> drift to [resource]'
+
+[GROWTH RULES]
+- 'grow' requires an 'init' state and a 'step' function.
+- 'step' uses Relative Indexing:
+    - tail(n): Access the last n elements.
+    - head(n): Access the first n elements.
+
+[EXPRESSIONS]
+- Equality: 'is' / 'is not'
+- Comparison: '>', '<', '>=', '<='
+- Combination: 'and', 'with'
+
+# 8. THE SOLAS CONTRACT
+- Code must be human-readable as a sentence.
+- If a function cannot be expressed in under 3 lines, it must be broken into a sub-stream.
+
+// Grammar is complete to this point, as follows:
+For AI Generation: Yes. This is more than enough for AI Generation to write perfect Solas for you.
+For a Functional Compiler: It needs a Lexer definition.
