@@ -16,6 +16,12 @@ In legacy programming, logic is often obscured by the "darkness" of boilerplate 
 
 ---
 
+## AI-Native Efficiency
+
+Standard languages are "chatty"—cluttered with boilerplate that inflates LLM token consumption. Solas uses high-density, intent-driven syntax to reduce token overhead by up to 50%, making AI-driven development faster, cheaper, and more precise.
+
+---
+
 ## The Solas Grammar
 
 Solas eliminates syntactic friction. There are no imports, no semicolons, and no manual memory management.
