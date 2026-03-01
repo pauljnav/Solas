@@ -173,12 +173,14 @@ refract performance {
 }
 
 // Correct abstraction of Dark Logic
-refract if @core.system_valid
+refract system_check {
+    on @core.system_valid: evolve logic -> "switch to @cache"
+}
 ```
 
 ---
 
-
+## Shape Rules
 
 Shapes are always **named** and **flat**. Anonymous inline shapes are not permitted. Sub-structures are defined as separate named shapes and referenced by name.
 
