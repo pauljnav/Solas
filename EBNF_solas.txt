@@ -1,0 +1,290 @@
+// ============================================================
+// Solas Language — Formal EBNF Grammar Specification v1.0
+// Derived from: GRAMMAR_solas.txt and README.md
+// Notation: ::= definition, | alternation, [] optional,
+//           {} zero or more, () grouping, "" terminal
+// ============================================================
+
+
+// ============================================================
+// 1. PROGRAM STRUCTURE
+// ============================================================
+
+program         ::= { statement } EOF
+
+statement       ::= stream_stmt
+                  | emit_stmt
+                  | grow_stmt
+                  | refract_stmt
+                  | shape_stmt
+                  | comment
+
+block           ::= INDENT { statement } DEDENT
+
+
+// ============================================================
+// 2. STREAM STATEMENT
+// Initiates async/continuous data flow from a resource.
+//
+// Examples:
+//   stream user from @net.api("user/1") { ... }
+//   stream feed from @data.recall("posts") { ... }
+// ============================================================
+
+stream_stmt     ::= "stream" IDENTIFIER "from" resource_expr "{" stream_body "}"
+
+stream_body     ::= { shape_stmt
+                    | drift_stmt
+                    | emit_stmt
+                    | refract_stmt
+                    | modifier_call
+                    | comment }
+
+
+// ============================================================
+// 3. EMIT STATEMENT
+// Routes a value to the active output buffer.
+//
+// Examples:
+//   emit user.name
+//   emit fib
+//   emit result with format("json")
+// ============================================================
+
+emit_stmt       ::= "emit" emit_target { "," emit_target } [ "with" modifier_call ]
+
+emit_target     ::= access_expr
+                  | IDENTIFIER
+                  | literal
+
+
+// ============================================================
+// 4. GROW STATEMENT
+// Handles iterative expansion and organic recursion.
+//
+// Examples:
+//   grow fib to 10 { init [0, 1]  step: tail(2).sum }
+//   grow primes while count < 100 { init [2]  step: next_prime }
+// ============================================================
+
+grow_stmt       ::= "grow" IDENTIFIER grow_bound "{" grow_body "}"
+
+grow_bound      ::= "to" NUMBER          // exactly N iterations; result length = len(init) + N
+                  | "while" condition    // run until condition is false
+
+grow_body       ::= init_clause step_clause { comment }
+
+init_clause     ::= "init" list_literal
+
+step_clause     ::= "step" ":" step_expr
+
+step_expr       ::= relative_index "." IDENTIFIER           // e.g. tail(2).sum
+                  | expression
+
+
+// ============================================================
+// 5. REFRACT STATEMENT
+// Defines a self-modifying logic gate triggered by a condition.
+//
+// Examples:
+//   refract performance {
+//       on latency > 200: evolve logic -> "switch to @cache"
+//   }
+// ============================================================
+
+refract_stmt    ::= "refract" IDENTIFIER "{" refract_body "}"
+
+refract_body    ::= { refract_rule | comment }
+
+refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
+
+
+// ============================================================
+// 6. SHAPE STATEMENT
+// Constrains data to a named semantic structure.
+//
+// Examples:
+//   shape UserProfile { id: UUID, name: String, age: Number }
+//   stream user from @net.api("user/1") {
+//       shape UserProfile
+//       on error -> drift to @cache.last_user
+//   }
+//   emit user.name
+// ============================================================
+
+shape_stmt      ::= "shape" IDENTIFIER "{" shape_body "}"
+
+shape_body      ::= { field_def | comment }
+
+field_def       ::= IDENTIFIER ":" type_ref [ "," ]
+
+type_ref        ::= "String"
+                  | "Number"
+                  | "Boolean"
+                  | "UUID"
+                  | "Blob"
+                  | IDENTIFIER                          // reference to a user-defined shape
+
+
+// ============================================================
+// 7. DRIFT STATEMENT
+// Mandatory fallback / error recovery path.
+//
+// Examples:
+//   on error -> drift to @cache.last_user
+//   on error -> drift to @data.recall("backup")
+// ============================================================
+
+drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
+
+
+// ============================================================
+// 8. RESOURCE EXPRESSIONS
+// All system resources accessed via @ global pointers.
+//
+// Examples:
+//   @net.api("user/1")
+//   @net.request("https://example.com").secure(@env.TOKEN).retry(3)
+//   @data.store(payload).as("json").on("cloud")
+//   @cache.last_user
+// ============================================================
+
+resource_expr   ::= resource_root { "." resource_call }
+
+resource_root   ::= "@net"
+                  | "@data"
+                  | "@math"
+                  | "@core"
+                  | "@env"
+                  | "@cache"                               // implied by drift examples
+
+resource_call   ::= IDENTIFIER [ "(" [ arg_list ] ")" ]
+
+// @net connectors
+net_connector   ::= "pulse"   "(" STRING ")"               // heartbeat check
+                  | "stream"  "(" STRING ")"               // continuous data pipe
+                  | "request" "(" STRING ")"               // single-shot fetch
+                  | "api"     "(" STRING ")"               // REST API endpoint
+
+// @net modifiers
+net_modifier    ::= "secure" "(" resource_expr ")"         // inject auth header
+                  | "retry"  "(" NUMBER ")"                // exponential backoff
+                  | "mirror" "(" STRING ")"                // secondary source
+
+// @data actions
+data_action     ::= "store"  "(" expression ")"
+                  | "recall" "(" expression ")"
+                  | "drop"   "(" expression ")"
+
+// @data modifiers
+data_modifier   ::= "as" "(" format_type ")"
+                  | "on" "(" location_type ")"
+
+format_type     ::= "JSON" | "CSV" | "Blob" | STRING
+location_type   ::= "disk" | "cloud" | "cache" | STRING
+
+
+// ============================================================
+// 9. EXPRESSIONS
+// ============================================================
+
+expression      ::= comparison_expr
+                  | access_expr
+                  | literal
+                  | IDENTIFIER
+
+comparison_expr ::= expression comparator expression
+                  | expression "is" expression
+                  | expression "is" "not" expression
+
+comparator      ::= ">" | "<" | ">=" | "<="
+
+condition       ::= expression comparator expression
+                  | expression "is" expression
+                  | expression "is" "not" expression
+
+access_expr     ::= IDENTIFIER { "." IDENTIFIER }          // e.g. user.name
+
+relative_index  ::= "tail" "(" NUMBER ")"                  // last n elements
+                  | "head" "(" NUMBER ")"                  // first n elements
+
+arg_list        ::= expression { "," expression }
+
+list_literal    ::= "[" [ expression { "," expression } ] "]"
+
+literal         ::= STRING | NUMBER | BOOLEAN | list_literal
+
+modifier_call   ::= IDENTIFIER "(" [ arg_list ] ")"
+
+
+// ============================================================
+// 10. LEXICAL TOKENS
+// ============================================================
+
+// --- Identifiers & Literals ---
+IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]*
+STRING          ::= '"' { any character except '"' } '"'
+NUMBER          ::= [0-9]+ ( "." [0-9]+ )?
+BOOLEAN         ::= "true" | "false"
+
+// --- Structure ---
+INDENT          ::= increase in leading whitespace (consistent spaces or tabs)
+DEDENT          ::= decrease in leading whitespace to previous level
+EOF             ::= end of input
+
+// --- Operators ---
+FLOW_OP         ::= "->"
+DOT             ::= "."
+COLON           ::= ":"
+COMMA           ::= ","
+
+// --- Comments (ignored by parser) ---
+comment         ::= "//" { any character } NEWLINE
+
+// --- Whitespace ---
+// Whitespace is significant for block nesting (INDENT/DEDENT).
+// Horizontal whitespace between tokens is ignored.
+// Recommended: 4 spaces per indent level. Tabs are not recommended.
+
+
+// ============================================================
+// 11. RESERVED KEYWORDS
+// ============================================================
+
+// Control     : stream, emit, grow, refract, drift, shape
+// Sub-clauses : init, step, on, evolve, logic, to, from, with, as
+// Types       : String, Number, Boolean, UUID, Blob
+// Operators   : is, is not, and, or
+// Resources   : @net, @data, @math, @core, @env, @cache
+// Connectors  : pulse, stream, request, api, secure, retry, mirror,
+//               store, recall, drop, tail, head
+
+
+// ============================================================
+// 12. OPEN QUESTIONS FOR THE LANGUAGE AUTHOR
+// (Ambiguities not yet resolved in the spec)
+// ============================================================
+
+// Q1: grow bounds — does "grow fib to 10" mean 10 *iterations*
+//     or stop when the value *reaches* 10?
+
+// Q2: Can emit output multiple values?
+//     e.g. "emit user.name, user.id" — is this valid?
+
+// Q3: Can shapes be nested?
+//     e.g. shape { address: { city: String, zip: String } }
+
+// Q4: Can stream blocks be nested inside other stream blocks?
+
+// Q5: Is "and" a valid combinator in conditions?
+//     e.g. "on latency > 200 and errors > 5:"
+
+// Q6: What is the scope of IDENTIFIER bindings?
+//     Are stream-bound names visible outside the block?
+
+// Q7: Is @env accessed with a key?
+//     e.g. @env.TOKEN vs @env("TOKEN") — which form is canonical?
+
+// ============================================================
+// END OF GRAMMAR
+// ============================================================
