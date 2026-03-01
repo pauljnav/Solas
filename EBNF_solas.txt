@@ -327,3 +327,7 @@ comment         ::= "//" { any character } NEWLINE
 // Resources   : @net, @data, @math, @core, @env, @cache
 // Connectors  : pulse, stream, request, api, secure, retry, mirror,
 //               store, recall, drop, tail, head
+
+// ============================================================
+// END OF GRAMMAR
+// ============================================================
