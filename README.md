@@ -31,11 +31,12 @@ Solas eliminates syntactic friction. There are no imports, no semicolons, and no
 | Keyword | Function |
 | --- | --- |
 | `stream` | Initiates continuous or asynchronous data flow. |
-| `emit` | Directs output to the active interface (Console, API, UI). |
+| `emit`   | Directs output to the active interface (Console, API, UI), or hands off to the next stream. |
 | `refract` | Triggers real-time logic mutation based on performance. |
-| `drift` | Deterministic error recovery; self-heals to a backup path. |
-| `grow` | Handles organic recursion and iterative expansion. |
-| `shape` | Semantic data validation and type-mapping. |
+| `drift`   | Deterministic error recovery; self-heals to a backup path. |
+| `grow`    | Handles organic recursion and iterative expansion. |
+| `shape`   | Semantic data validation and type-mapping. |
+| `as`      | Binds a stream result to a readable alias name. |
 
 ---
 
@@ -46,7 +47,9 @@ Solas interacts with the system through **Global Pointers**. These abstract comp
 * **`@net`**: Self-negotiating network layer.
 * **`@data`**: Context-aware schema and validation engine.
 * **`@math`**: High-performance tensor and vector primitives.
-* **`@core`**: Runtime management for self-modifying blocks.
+* **`@core`**: Runtime management and inter-stream pipes.
+* **`@cache`**: Fast-access fallback storage for drift scenarios.
+* **`@env`**: Variable environment and secrets.
 
 ---
 
@@ -58,39 +61,84 @@ Solas interacts with the system through **Global Pointers**. These abstract comp
 // Intent: Secure User Profile
 shape UserProfile { id: UUID, name: String }
 
-stream @net.api("user/1") {
+stream @net.api("user/1") as user {
     shape UserProfile
     on error -> drift to @cache.last_user
 }
-
-emit @net.api("user/1").name
-```
-
-```solas
-// Intent: Lookup user from incoming request
-stream @net.ingress {
-    shape UserID
-    emit @core.lookup_pipe
-}
-
-// Intent: Resolve full profile and respond
-stream @core.lookup_pipe {
-    shape UserProfile
-    emit @net.response
-}
-
+emit user.name
 ```
 
 ### Fibonacci Sequence (Organic Growth)
 
 ```solas
 // Intent: Sequence Expansion
+// grow runs exactly 10 iterations; result = 2 initial + 10 grown = 12 elements
 grow fib to 10 {
     init [0, 1]
     step: tail(2).sum
 }
 emit fib
+```
 
+### Chained Streams (Hand-off Pattern)
+
+```solas
+// Intent: Lookup user from incoming request
+shape UserID { id: UUID }
+shape UserProfile { id: UUID, name: String }
+shape PostList { posts: String }
+
+stream @net.ingress as request {
+    shape UserID
+    on error -> drift to @cache.last_user
+    emit @core.lookup_pipe
+}
+
+// Intent: Resolve full profile and respond
+stream @core.lookup_pipe as user {
+    shape UserProfile
+    on error -> drift to @cache.last_user
+    emit @core.posts_pipe
+}
+
+// Intent: Fetch user posts and return response
+stream @core.posts_pipe as posts {
+    shape PostList
+    on error -> drift to @cache.last_posts
+}
+
+emit user.name, posts
+```
+
+---
+
+## Linear Flow Philosophy
+
+Solas follows a **Linear Flow** model. Stream blocks are never nested. Instead, dependent streams are connected via the **Hand-off Pattern** — one stream emits into a `@core` pipe, and the next stream picks it up. This keeps every intent visible as a distinct, sequential step.
+
+```solas
+// Valid — chained intent
+stream @net.ingress as request {
+    emit @core.lookup_pipe
+}
+stream @core.lookup_pipe as user {
+    emit @net.response
+}
+```
+
+---
+
+## Shape Rules
+
+Shapes are always **named** and **flat**. Sub-structures are defined as separate named shapes and referenced by name.
+
+```solas
+// Valid — named shape, referential pattern
+shape UserProfile { id: UUID, name: String }
+
+stream @net.api("user/1") as user {
+    shape UserProfile
+}
 ```
 
 ---
@@ -99,7 +147,7 @@ emit fib
 
 To enable Solas in your AI editor, add the following to your system instructions:
 
-> "Translate intent into Solas. Prioritize succinctness. Use `@` for resources. Every line must represent a distinct logical intent."
+> "Translate intent into Solas. Prioritize succinctness. Use `@` for resources. Every line must represent a distinct logical intent. Streams are never nested — use the Hand-off Pattern. All shapes must be named."
 
 ---
 
