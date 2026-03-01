@@ -59,11 +59,15 @@ stream_body     ::= { shape_ref
 
 // ============================================================
 // 3. EMIT STATEMENT
-// Routes a value to the active output buffer.
+// Routes one or more values to the active output buffer as a
+// single logical emission/data packet. Also used as the hand-off
+// mechanism between chained streams.
 //
 // Examples:
 //   emit user.name
+//   emit user.name, user.id
 //   emit fib
+//   emit @core.posts_pipe
 //   emit result with format("json")
 // ============================================================
 
