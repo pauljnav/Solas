@@ -1,0 +1,10 @@
+// Testing Solas Alpha v0.1
+stream @net.ingress
+shape UserProfile {
+    id: UUID
+    token: @env.AUTH_TOKEN
+}
+
+refract if latency > 50ms and @env("DEPLOY-STAGE") == "prod"
+drift -> @core.static_buffer
+emit user.id, @data.archive

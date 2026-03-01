@@ -1,0 +1,15 @@
+// main.solas - Testing Solas Alpha v0.1 Numeric Enhancements
+stream @net.ingress
+shape UserProfile {
+    id: UUID
+    token: @env.AUTH_TOKEN
+    // Testing decimal precision and scientific notation
+    priority: Number if value > 0.5 and value <= 1.0e2
+}
+
+// Logic: Testing greedy '50ms' and exponential '2.5e-3'
+refract if latency > 50ms and jitter < 2.5e-3
+refract if load > 0.75 and @env("DEPLOY-STAGE") == "prod"
+
+drift -> @core.static_buffer
+emit user.id, @data.archive
