@@ -25,18 +25,33 @@ block           ::= INDENT { statement } DEDENT
 // ============================================================
 // 2. STREAM STATEMENT
 // Initiates async/continuous data flow from a resource.
+// The resource is the unambiguous source. An optional 'as' alias
+// binds the result to a readable name for use in emit and downstream streams.
+// Nesting stream blocks is invalid — use the Hand-off Pattern instead.
 //
 // Examples:
-//   stream @net.api("user/1") { ... }
-//   stream @data.recall("posts") { ... }
-//   stream @core.lookup_pipe { ... }
+//   stream @net.api("user/1") as user { ... }
+//   stream @data.recall("posts") as feed { ... }
+//   stream @core.lookup_pipe as result { ... }
+//
+// Hand-off Pattern (chained streams):
+//   stream @net.api("user/1") as user {
+//       shape UserProfile
+//       on error -> drift to @cache.last_user
+//       emit @core.posts_pipe
+//   }
+//   stream @core.posts_pipe as posts {
+//       shape PostList
+//       on error -> drift to @cache.last_posts
+//   }
+//   emit user.name, posts
 // ============================================================
 
-stream_stmt     ::= "stream" resource_expr "{" stream_body "}"    // source is a resource
+stream_stmt     ::= "stream" resource_expr [ "as" IDENTIFIER ] "{" stream_body "}"
 
-stream_body     ::= { shape_stmt
+stream_body     ::= { shape_ref
                     | drift_stmt
-                    | emit_stmt                                   // hand-off for final output
+                    | emit_stmt
                     | refract_stmt
                     | modifier_call
                     | comment }
