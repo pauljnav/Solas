@@ -171,12 +171,13 @@ drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
 // ============================================================
 
 resource_expr   ::= resource_root { "." resource_call }
+                  | "@env" "(" STRING ")"                  // fallback call notation for non-standard env names
 
 resource_root   ::= "@net"
                   | "@data"
                   | "@math"
                   | "@core"
-                  | "@env"
+                  | "@env"                                 // standard: @env.KEY — fallback: @env("KEY-NAME")
                   | "@cache"                               // implied by drift examples
 
 resource_call   ::= IDENTIFIER [ "(" [ arg_list ] ")" ]
@@ -220,9 +221,56 @@ comparison_expr ::= expression comparator expression
 
 comparator      ::= ">" | "<" | ">=" | "<="
 
-condition       ::= expression comparator expression
-                  | expression "is" expression
-                  | expression "is" "not" expression
+// ============================================================
+// CONDITIONS — The Rule of Three
+//
+// Maximum three 'and' operators (four simple conditions) per condition block.
+// Exceeding this is "Dark Logic" — the Semantic Guard throws a Complexity Overflow error.
+// Abstract Dark Logic into a named refract block or @core resource pointer.
+//
+// 'or' is not permitted — it splits intent and must become two separate refract rules.
+//
+// Both inline and line-wrapped forms are equally valid.
+//
+// Inline form:
+//   on latency > 200 and errors > 5 and memory > 80: evolve logic -> "switch to @cache"
+//
+// Line-wrapped form (continuation — each line ending in 'and' is held open by the parser):
+//   on latency > 200 and
+//      errors > 5 and
+//      memory > 80: evolve logic -> "switch to @cache"
+//
+// Continuation lines must be indented relative to the opening 'on' keyword.
+// The colon on the final condition line signals closure.
+//
+// Dark Logic (Complexity Overflow — invalid):
+//   on a > 1 and b < 2 and c == 3 and d != 4 and e > 0:
+//
+// Correct abstraction:
+//   refract if @core.system_valid
+// ============================================================
+
+condition       ::= simple_condition
+                  | simple_condition "and" simple_condition
+                  | simple_condition "and" simple_condition "and" simple_condition
+                  | simple_condition "and" simple_condition "and" simple_condition "and" simple_condition
+                  // Maximum three 'and' operators. Enforced by Semantic Guard.
+                  // Line-wrapped form: 'and' at end of line signals continuation to parser.
+
+simple_condition ::= expression comparator expression
+                   | expression "is" expression
+                   | expression "is" "not" expression
+
+// 'or' is not a valid logical operator in Solas.
+// A condition that branches on either/or represents two separate intents
+// and must be written as two separate refract rules:
+//
+//   -- Invalid:
+//   on status is "timeout" or status is "refused": evolve logic -> "retry"
+//
+//   -- Valid:
+//   on status is "timeout": evolve logic -> "retry"
+//   on status is "refused": evolve logic -> "retry"
 
 access_expr     ::= IDENTIFIER { "." IDENTIFIER }          // e.g. user.name
 
@@ -279,33 +327,3 @@ comment         ::= "//" { any character } NEWLINE
 // Resources   : @net, @data, @math, @core, @env, @cache
 // Connectors  : pulse, stream, request, api, secure, retry, mirror,
 //               store, recall, drop, tail, head
-
-
-// ============================================================
-// 12. OPEN QUESTIONS FOR THE LANGUAGE AUTHOR
-// (Ambiguities not yet resolved in the spec)
-// ============================================================
-
-// Q1: grow bounds — does "grow fib to 10" mean 10 *iterations*
-//     or stop when the value *reaches* 10?
-
-// Q2: Can emit output multiple values?
-//     e.g. "emit user.name, user.id" — is this valid?
-
-// Q3: Can shapes be nested?
-//     e.g. shape { address: { city: String, zip: String } }
-
-// Q4: Can stream blocks be nested inside other stream blocks?
-
-// Q5: Is "and" a valid combinator in conditions?
-//     e.g. "on latency > 200 and errors > 5:"
-
-// Q6: What is the scope of IDENTIFIER bindings?
-//     Are stream-bound names visible outside the block?
-
-// Q7: Is @env accessed with a key?
-//     e.g. @env.TOKEN vs @env("TOKEN") — which form is canonical?
-
-// ============================================================
-// END OF GRAMMAR
-// ============================================================
