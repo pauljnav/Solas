@@ -122,17 +122,18 @@ refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
 // ============================================================
 // 6. SHAPE STATEMENT
 // Constrains data to a named semantic structure.
+// All shapes must be named — anonymous inline shapes are not permitted.
+// Sub-structures are defined as separate named shapes and referenced by name.
 //
 // Examples:
-//   shape UserProfile { id: UUID, name: String, age: Number }
-//   stream user from @net.api("user/1") {
-//       shape UserProfile
-//       on error -> drift to @cache.last_user
-//   }
-//   emit user.name
+//   shape UserProfile { id: UUID, name: String }
+//   shape Address { city: String, zip: String }
+//   shape UserProfile { id: UUID, name: String, address: Address }
 // ============================================================
 
-shape_stmt      ::= "shape" IDENTIFIER "{" shape_body "}"
+shape_stmt      ::= "shape" IDENTIFIER "{" shape_body "}"   // IDENTIFIER required; no anonymous shapes
+
+shape_ref       ::= "shape" IDENTIFIER                       // reference to a named shape inside a stream block
 
 shape_body      ::= { field_def | comment }
 
@@ -143,7 +144,7 @@ type_ref        ::= "String"
                   | "Boolean"
                   | "UUID"
                   | "Blob"
-                  | IDENTIFIER                          // reference to a user-defined shape
+                  | IDENTIFIER                              // reference to another named shape
 
 
 // ============================================================
