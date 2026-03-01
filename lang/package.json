@@ -1,0 +1,31 @@
+{
+    "name": "solas",
+	"displayName": "Solas",
+    "publisher": "Paul Naughton",
+    "author": "Paul Naughton",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "contributes": {
+        "languages": [
+            {
+                "id": "solas",
+                "aliases": [
+                    "Solas"
+                ],
+                "extensions": [
+                    ".solas"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "solas",
+                "scopeName": "source.solas",
+                "path": "./solas.tmLanguage.json"
+            }
+        ]
+    }
+}
