@@ -1,0 +1,19 @@
+// mini_test.solas
+emit "--- Starting Solas Mini-Test ---"
+
+stream post from @net.api("https://jsonplaceholder.typicode.com/posts/1") {
+    retry(2)
+    store post['title'] as saved_title
+    emit "Network Check: Success"
+}
+
+recall saved_title into title_check
+emit "Storage Check: {title_check}"
+
+grow sequence to 3 {
+    init [10, 20]
+    step: tail(2).sum
+}
+emit "Growth Check: {sequence}"
+
+emit "--- Test Complete ---"

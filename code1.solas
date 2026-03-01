@@ -1,0 +1,23 @@
+
+    solas_code = """
+    // Intent: Initialize and store author
+    emit "Solas Engine v1.0 Active"
+    store "Paul Naughton" as creator
+
+    // Intent: Fetch external data
+    stream todo from @net.api("https://jsonplaceholder.typicode.com/todos/1") {
+        retry(2)
+        emit "Task: {todo['title']}"
+    }
+
+    // Intent: Recall and display author
+    recall creator into user
+    emit "Architect: {user}"
+
+    // Intent: Generate sequence
+    grow sequence to 5 {
+        init [1, 1]
+        step: tail(2).sum
+    }
+    emit sequence
+    """

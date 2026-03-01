@@ -34,50 +34,47 @@ class SolasRuntime:
                 f"{var} = data")
 
     def _handle_stream(self, match):
-        """Translates network intents into resilient request blocks."""
         var, url, block = match.groups()
         headers, retries = self._handle_net_logic(block)
 
-        # Split lines and strip ALL leading/trailing whitespace from each
-        lines = [line.strip() for line in block.split('\n')]
+        # Clean and indent
+        lines = [l.strip() for l in block.split('\n') if l.strip()]
+        logic = "\n".join(["        " + l for l in lines if not any(k in l for k in ['secure', 'retry'])])
 
-        # Filter out keywords that are handled by the translator, keep the rest
-        logic_lines = []
-        for line in lines:
-            if line and not any(k in line for k in ['secure with', 'retry']):
-                # Force exactly 8 spaces of indentation for Python's try block
-                logic_lines.append(f"        {line}")
-
-        inner_logic = "\n".join(logic_lines)
-
-        return (f"for _ in range({retries}):\n"
-                f"    try:\n"
-                f"        res = requests.get('{url}', headers={headers})\n"
-                f"        res.raise_for_status()\n"
-                f"        {var} = res.json()\n"
-                f"{inner_logic}\n"
-                f"        break\n"
-                f"    except Exception as e:\n"
-                f"        if _ == {retries} - 1:\n"
-                f"            print(f'Drifting from @net error: {{e}}')")
+        # Use triple quotes for the block to prevent any quote nesting errors
+        return f"""
+for _ in range({retries}):
+    try:
+        res = requests.get('{url}', headers={headers})
+        res.raise_for_status()
+        {var} = res.json()
+{logic}
+        break
+    except Exception as e:
+        if _ == {retries} - 1: print(f"Drifting: {{e}}")
+"""
 
     def run(self, script):
-        # 1. Strip comments and normalize
+        import textwrap
+        script = textwrap.dedent(script).strip()
         script = re.sub(r'//.*', '', script)
 
-        # 2. Transpile
         script = self._handle_data(script)
         script = re.sub(r'grow (\w+) to (\d+) \{ init \[(.*)\] step: (.*) \}', self._handle_grow, script)
         script = re.sub(r'stream (\w+) from @net\.(?:api|stream)\("(.*)"\) \{(.*?)\}', self._handle_stream, script, flags=re.DOTALL)
 
-        # Flexible emit: handles variables, dict access, and strings
-        script = re.sub(r'emit "(.*)"', r'print(f"\1")', script)
+        # FIXED EMIT: Uses a safer template that doesn't care about internal quotes
+        script = re.sub(r'emit "(.*)"', r'print(f"""\1""")', script)
         script = re.sub(r'emit ([^"\s]+)', r'print(\1)', script)
 
-        # 3. Execute
         try:
+            # We must pass the current storage into the exec globals
             exec(script, {"requests": requests, "self": self}, self.context)
         except Exception as e:
+            # If it fails, we need to see the "Iron" code it built
+            print("--- GENERATED PYTHON (DEBUG) ---")
+            print(script)
+            print("--------------------------------")
             print(f"Solas Critical Failure: {e}")
 
 if __name__ == "__main__":
