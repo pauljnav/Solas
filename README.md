@@ -56,11 +56,28 @@ Solas interacts with the system through **Global Pointers**. These abstract comp
 
 ```solas
 // Intent: Secure User Profile
-stream user from @net.api("user/1") {
-    shape { id: UUID, name: String }
+shape UserProfile { id: UUID, name: String }
+
+stream @net.api("user/1") {
+    shape UserProfile
     on error -> drift to @cache.last_user
 }
-emit user.name
+
+emit @net.api("user/1").name
+```
+
+```solas
+// Intent: Lookup user from incoming request
+stream @net.ingress {
+    shape UserID
+    emit @core.lookup_pipe
+}
+
+// Intent: Resolve full profile and respond
+stream @core.lookup_pipe {
+    shape UserProfile
+    emit @net.response
+}
 
 ```
 
