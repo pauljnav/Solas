@@ -180,7 +180,11 @@ resource_root   ::= "@net"
                   | "@env"                                 // standard: @env.KEY — fallback: @env("KEY-NAME")
                   | "@cache"                               // implied by drift examples
 
-resource_call   ::= IDENTIFIER [ "(" [ arg_list ] ")" ]
+resource_call   ::= net_connector
+                  | net_modifier
+                  | data_action
+                  | data_modifier
+                  | IDENTIFIER [ "(" [ arg_list ] ")" ]    // generic fallback for @math, @core, @env
 
 // @net connectors
 net_connector   ::= "pulse"   "(" STRING ")"               // heartbeat check
@@ -321,9 +325,9 @@ comment         ::= "//" { any character } NEWLINE
 // ============================================================
 
 // Control     : stream, emit, grow, refract, drift, shape
-// Sub-clauses : init, step, on, evolve, logic, to, from, with, as
+// Sub-clauses : init, step, on, evolve, logic, to, with, as
 // Types       : String, Number, Boolean, UUID, Blob
-// Operators   : is, is not, and, or
+// Operators   : is, is not, and
 // Resources   : @net, @data, @math, @core, @env, @cache
 // Connectors  : pulse, stream, request, api, secure, retry, mirror,
 //               store, recall, drop, tail, head
