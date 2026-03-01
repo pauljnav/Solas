@@ -27,15 +27,16 @@ block           ::= INDENT { statement } DEDENT
 // Initiates async/continuous data flow from a resource.
 //
 // Examples:
-//   stream user from @net.api("user/1") { ... }
-//   stream feed from @data.recall("posts") { ... }
+//   stream @net.api("user/1") { ... }
+//   stream @data.recall("posts") { ... }
+//   stream @core.lookup_pipe { ... }
 // ============================================================
 
-stream_stmt     ::= "stream" IDENTIFIER "from" resource_expr "{" stream_body "}"
+stream_stmt     ::= "stream" resource_expr "{" stream_body "}"    // source is a resource
 
 stream_body     ::= { shape_stmt
                     | drift_stmt
-                    | emit_stmt
+                    | emit_stmt                                   // hand-off for final output
                     | refract_stmt
                     | modifier_call
                     | comment }
