@@ -89,8 +89,8 @@ emit_target     ::= access_expr
 
 grow_stmt       ::= "grow" IDENTIFIER grow_bound "{" grow_body "}"
 
-grow_bound      ::= "to" NUMBER          // exactly N iterations; result length = len(init) + N
-                  | "while" condition    // run until condition is false
+grow_bound      ::= "to" NUMBER                             // exactly N iterations; result length = len(init) + N
+                  | "while" condition                         // run until condition is false
 
 grow_body       ::= init_clause step_clause { comment }
 
