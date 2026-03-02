@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.0
+// Solas Language — Formal EBNF Grammar Specification v1.1
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -10,65 +10,37 @@
 // 1. PROGRAM STRUCTURE
 // ============================================================
 
-program         ::= { statement } EOF
+program         ::= { statement | NEWLINE } EOF
 
 statement       ::= stream_stmt
                   | emit_stmt
                   | grow_stmt
                   | refract_stmt
                   | shape_stmt
+                  | drift_stmt
                   | comment
 
-block           ::= INDENT { statement } DEDENT
-
+block           ::= NEWLINE INDENT { statement | NEWLINE } DEDENT
 
 // ============================================================
 // 2. STREAM STATEMENT
-// Initiates async/continuous data flow from a resource.
-// The resource is the unambiguous source. An optional 'as' alias
-// binds the result to a readable name for use in emit and downstream streams.
-// Nesting stream blocks is invalid — use the Hand-off Pattern instead.
-//
-// Examples:
-//   stream @net.api("user/1") as user { ... }
-//   stream @data.recall("posts") as feed { ... }
-//   stream @core.lookup_pipe as result { ... }
-//
-// Hand-off Pattern (chained streams):
-//   stream @net.api("user/1") as user {
-//       shape UserProfile
-//       on error -> drift to @cache.last_user
-//       emit @core.posts_pipe
-//   }
-//   stream @core.posts_pipe as posts {
-//       shape PostList
-//       on error -> drift to @cache.last_posts
-//   }
-//   emit user.name, posts
 // ============================================================
+// Initiates async/continuous data flow from a resource.
+// Blocks are defined by keywords and indentation (exactly 4 spaces).
 
-stream_stmt     ::= "stream" resource_expr [ "as" IDENTIFIER ] "{" stream_body "}"
+stream_stmt     ::= "stream" resource_expr [ "as" IDENTIFIER ] stream_block
 
-stream_body     ::= { shape_ref
-                    | drift_stmt
-                    | emit_stmt
-                    | refract_stmt
-                    | modifier_call
-                    | comment }
+stream_block    ::= NEWLINE INDENT { stream_body_stmt | NEWLINE } DEDENT
 
+stream_body_stmt ::= shape_ref
+                   | drift_stmt
+                   | emit_stmt
+                   | refract_stmt
+                   | modifier_call
+                   | comment
 
 // ============================================================
 // 3. EMIT STATEMENT
-// Routes one or more values to the active output buffer as a
-// single logical emission/data packet. Also used as the hand-off
-// mechanism between chained streams.
-//
-// Examples:
-//   emit user.name
-//   emit user.name, user.id
-//   emit fib
-//   emit @core.posts_pipe
-//   emit result with format("json")
 // ============================================================
 
 emit_stmt       ::= "emit" emit_target { "," emit_target } [ "with" modifier_call ]
@@ -77,209 +49,75 @@ emit_target     ::= access_expr
                   | IDENTIFIER
                   | literal
 
-
 // ============================================================
 // 4. GROW STATEMENT
-// Handles iterative expansion and organic recursion.
-//
-// Examples:
-//   grow fib to 10 { init [0, 1]  step: tail(2).sum }
-//   grow primes while count < 100 { init [2]  step: next_prime }
 // ============================================================
 
-grow_stmt       ::= "grow" IDENTIFIER grow_bound "{" grow_body "}"
+grow_stmt       ::= "grow" IDENTIFIER grow_bound grow_block
 
-grow_bound      ::= "to" NUMBER                             // exactly N iterations; result length = len(init) + N
-                  | "while" condition                         // run until condition is false
+grow_block      ::= NEWLINE INDENT init_clause step_clause { comment | NEWLINE } DEDENT
 
-grow_body       ::= init_clause step_clause { comment }
+grow_bound      ::= "to" NUMBER | "while" condition
 
 init_clause     ::= "init" list_literal
-
 step_clause     ::= "step" ":" step_expr
-
-step_expr       ::= relative_index "." IDENTIFIER           // e.g. tail(2).sum
-                  | expression
-
+step_expr       ::= relative_index "." IDENTIFIER | expression
 
 // ============================================================
 // 5. REFRACT STATEMENT
-// Defines a self-modifying logic gate triggered by a condition.
-//
-// Examples:
-//   refract performance {
-//       on latency > 200: evolve logic -> "switch to @cache"
-//   }
 // ============================================================
 
-refract_stmt    ::= "refract" IDENTIFIER "{" refract_body "}"
+refract_stmt    ::= "refract" IDENTIFIER block
 
-refract_body    ::= { refract_rule | comment }
-
-refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
-
+refract_rule    ::= "on" condition "evolve" "logic" "->" STRING
 
 // ============================================================
 // 6. SHAPE STATEMENT
-// Constrains data to a named semantic structure.
-// All shapes must be named — anonymous inline shapes are not permitted.
-// Sub-structures are defined as separate named shapes and referenced by name.
-//
-// Examples:
-//   shape UserProfile { id: UUID, name: String }
-//   shape Address { city: String, zip: String }
-//   shape UserProfile { id: UUID, name: String, address: Address }
 // ============================================================
 
-shape_stmt      ::= "shape" IDENTIFIER "{" shape_body "}"   // IDENTIFIER required; no anonymous shapes
+shape_stmt      ::= "shape" IDENTIFIER block
 
-shape_ref       ::= "shape" IDENTIFIER                       // reference to a named shape inside a stream block
-
-shape_body      ::= { field_def | comment }
+shape_ref       ::= "shape" IDENTIFIER
 
 field_def       ::= IDENTIFIER ":" type_ref [ "," ]
 
-type_ref        ::= "String"
-                  | "Number"
-                  | "Boolean"
-                  | "UUID"
-                  | "Blob"
-                  | IDENTIFIER                              // reference to another named shape
-
+type_ref        ::= "String" | "Number" | "Boolean" | "UUID" | "Blob" | IDENTIFIER
 
 // ============================================================
 // 7. DRIFT STATEMENT
-// Mandatory fallback / error recovery path.
-//
-// Examples:
-//   on error -> drift to @cache.last_user
-//   on error -> drift to @data.recall("backup")
 // ============================================================
 
 drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
 
-
 // ============================================================
 // 8. RESOURCE EXPRESSIONS
-// All system resources accessed via @ global pointers.
-//
-// Examples:
-//   @net.api("user/1")
-//   @net.request("https://example.com").secure(@env.TOKEN).retry(3)
-//   @data.store(payload).as("json").on("cloud")
-//   @cache.last_user
 // ============================================================
 
 resource_expr   ::= resource_root { "." resource_call }
-                  | "@env" "(" STRING ")"                  // fallback call notation for non-standard env names
+                  | "@env" "(" STRING ")"
 
-resource_root   ::= "@net"
-                  | "@data"
-                  | "@math"
-                  | "@core"
-                  | "@env"                                 // standard: @env.KEY — fallback: @env("KEY-NAME")
-                  | "@cache"                               // implied by drift examples
+resource_root   ::= "@net" | "@data" | "@math" | "@core" | "@env" | "@cache"
 
-resource_call   ::= net_connector
-                  | net_modifier
-                  | data_action
-                  | data_modifier
-                  | IDENTIFIER [ "(" [ arg_list ] ")" ]    // generic fallback for @math, @core, @env
-
-// @net connectors
-net_connector   ::= "pulse"   "(" STRING ")"               // heartbeat check
-                  | "stream"  "(" STRING ")"               // continuous data pipe
-                  | "request" "(" STRING ")"               // single-shot fetch
-                  | "api"     "(" STRING ")"               // REST API endpoint
-
-// @net modifiers
-net_modifier    ::= "secure" "(" resource_expr ")"         // inject auth header
-                  | "retry"  "(" NUMBER ")"                // exponential backoff
-                  | "mirror" "(" STRING ")"                // secondary source
-
-// @data actions
-data_action     ::= "store"  "(" expression ")"
-                  | "recall" "(" expression ")"
-                  | "drop"   "(" expression ")"
-
-// @data modifiers
-data_modifier   ::= "as" "(" format_type ")"
-                  | "on" "(" location_type ")"
-
-format_type     ::= "JSON" | "CSV" | "Blob" | STRING
-location_type   ::= "disk" | "cloud" | "cache" | STRING
-
+resource_call   ::= IDENTIFIER [ "(" [ arg_list ] ")" ]
 
 // ============================================================
-// 9. EXPRESSIONS
+// 9. EXPRESSIONS & CONDITIONS
 // ============================================================
 
-expression      ::= comparison_expr
-                  | access_expr
-                  | literal
-                  | IDENTIFIER
+expression      ::= comparison_expr | access_expr | literal | IDENTIFIER
 
 comparison_expr ::= expression comparator expression
-                  | expression "is" expression
-                  | expression "is" "not" expression
+                  | expression "is" [ "not" ] expression
 
 comparator      ::= ">" | "<" | ">=" | "<="
 
-// ============================================================
-// CONDITIONS — The Rule of Three
-//
-// Maximum three 'and' operators (four simple conditions) per condition block.
-// Exceeding this is "Dark Logic" — the Semantic Guard throws a Complexity Overflow error.
-// Abstract Dark Logic into a named refract block or @core resource pointer.
-//
-// 'or' is not permitted — it splits intent and must become two separate refract rules.
-//
-// Both inline and line-wrapped forms are equally valid.
-//
-// Inline form:
-//   on latency > 200 and errors > 5 and memory > 80: evolve logic -> "switch to @cache"
-//
-// Line-wrapped form (continuation — each line ending in 'and' is held open by the parser):
-//   on latency > 200 and
-//      errors > 5 and
-//      memory > 80: evolve logic -> "switch to @cache"
-//
-// Continuation lines must be indented relative to the opening 'on' keyword.
-// The colon on the final condition line signals closure.
-//
-// Dark Logic (Complexity Overflow — invalid):
-//   on a > 1 and b < 2 and c == 3 and d != 4 and e > 0:
-//
-// Correct abstraction:
-//   refract if @core.system_valid
-// ============================================================
+condition       ::= simple_condition { "and" simple_condition }
 
-condition       ::= simple_condition
-                  | simple_condition "and" simple_condition
-                  | simple_condition "and" simple_condition "and" simple_condition
-                  | simple_condition "and" simple_condition "and" simple_condition "and" simple_condition
-                  // Maximum three 'and' operators. Enforced by Semantic Guard.
-                  // Line-wrapped form: 'and' at end of line signals continuation to parser.
+simple_condition ::= comparison_expr
 
-simple_condition ::= expression comparator expression
-                   | expression "is" expression
-                   | expression "is" "not" expression
+access_expr     ::= IDENTIFIER { "." IDENTIFIER }
 
-// 'or' is not a valid logical operator in Solas.
-// A condition that branches on either/or represents two separate intents
-// and must be written as two separate refract rules:
-//
-//   -- Invalid:
-//   on status is "timeout" or status is "refused": evolve logic -> "retry"
-//
-//   -- Valid:
-//   on status is "timeout": evolve logic -> "retry"
-//   on status is "refused": evolve logic -> "retry"
-
-access_expr     ::= IDENTIFIER { "." IDENTIFIER }          // e.g. user.name
-
-relative_index  ::= "tail" "(" NUMBER ")"                  // last n elements
-                  | "head" "(" NUMBER ")"                  // first n elements
+relative_index  ::= "tail" "(" NUMBER ")" | "head" "(" NUMBER ")"
 
 arg_list        ::= expression { "," expression }
 
@@ -289,36 +127,28 @@ literal         ::= STRING | NUMBER | BOOLEAN | list_literal
 
 modifier_call   ::= IDENTIFIER "(" [ arg_list ] ")"
 
-
 // ============================================================
 // 10. LEXICAL TOKENS
 // ============================================================
 
-// --- Identifiers & Literals ---
 IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]*
 STRING          ::= '"' { any character except '"' } '"'
 NUMBER          ::= [0-9]+ ( "." [0-9]+ )?
 BOOLEAN         ::= "true" | "false"
 
-// --- Structure ---
-INDENT          ::= increase in leading whitespace (consistent spaces or tabs)
-DEDENT          ::= decrease in leading whitespace to previous level
-EOF             ::= end of input
+NEWLINE         ::= "\n" | "\r\n"
+INDENT          ::= "Virtual token: Increase of exactly 4 spaces"
+DEDENT          ::= "Virtual token: Decrease of exactly 4 spaces"
 
-// --- Operators ---
 FLOW_OP         ::= "->"
 DOT             ::= "."
 COLON           ::= ":"
 COMMA           ::= ","
 
-// --- Comments (ignored by parser) ---
 comment         ::= "//" { any character } NEWLINE
 
 // --- Whitespace ---
-// Whitespace is significant for block nesting (INDENT/DEDENT).
-// Horizontal whitespace between tokens is ignored.
-// Recommended: 4 spaces per indent level. Tabs are not recommended.
-
+// MANDATORY: Exactly 4 spaces per indent level. Tabs strictly forbidden.
 
 // ============================================================
 // 11. RESERVED KEYWORDS
@@ -329,9 +159,7 @@ comment         ::= "//" { any character } NEWLINE
 // Types       : String, Number, Boolean, UUID, Blob
 // Operators   : is, is not, and
 // Resources   : @net, @data, @math, @core, @env, @cache
-// Connectors  : pulse, stream, request, api, secure, retry, mirror,
-//               store, recall, drop, tail, head
-
+// Connectors  : pulse, request, api, secure, retry, mirror, store, recall, drop, tail, head
 // ============================================================
 // END OF GRAMMAR
 // ============================================================
