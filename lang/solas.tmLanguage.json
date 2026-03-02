@@ -64,15 +64,19 @@
             "patterns": [
                 {
                     "name": "keyword.control.solas",
-                    "match": "\\b(stream|emit|grow|refract|shape|on|error|drift|to|as|init|step|while|evolve|logic)\\b"
+                    "match": "\\b(stream|emit|grow|refract|shape|drift|if|on|to|as|init|step|while|evolve|logic)\\b"
+                },
+                {
+                    "name": "invalid.illegal.operator.solas",
+                    "match": "\\bor\\b"
+                },
+                {
+                    "name": "keyword.operator.logical.solas",
+                    "match": "\\b(is|is\\s+not|not|and)\\b"
                 },
                 {
                     "name": "constant.language.boolean.solas",
                     "match": "\\b(true|false)\\b"
-                },
-                {
-                    "name": "keyword.operator.logical.solas",
-                    "match": "\\b(is|not|and)\\b"
                 }
             ]
         },
@@ -87,8 +91,12 @@
         "operators": {
             "patterns": [
                 {
-                    "name": "keyword.operator.solas",
-                    "match": "->|>=|<=|>|<|==|!=|:"
+                    "name": "keyword.operator.flow.solas",
+                    "match": "->"
+                },
+                {
+                    "name": "keyword.operator.comparison.solas",
+                    "match": ">=|<=|==|!=|>|<|:"
                 }
             ]
         },
