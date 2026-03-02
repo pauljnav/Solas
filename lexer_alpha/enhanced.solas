@@ -1,15 +1,17 @@
-// main.solas - Testing Solas Alpha v0.1 Numeric Enhancements
-stream @net.ingress
-shape UserProfile {
-    id: UUID
-    token: @env.AUTH_TOKEN
-    // Testing decimal precision and scientific notation
-    priority: Number if value > 0.5 and value <= 1.0e2
-}
+// Testing Solas v1.1 Compliance
+// Purpose: Numeric Enhancements
 
-// Logic: Testing greedy '50ms' and exponential '2.5e-3'
-refract if latency > 50ms and jitter < 2.5e-3
-refract if load > 0.75 and @env("DEPLOY-STAGE") == "prod"
+stream @net.ingress
+    shape UserProfile
+        id: UUID
+        token: @env.AUTH_TOKEN
+        // Logic: Compliant 'on' trigger and scientific notation
+        on priority > 0.5 and priority <= 1.0e2 evolve logic -> "boost"
+
+// Logic: Removed 'if' and 'ms' suffix; using clean scientific notation
+refract UserProfile
+    on latency > 50 and jitter < 2.5e-3 evolve logic -> "stable"
+    on load > 0.75 and @env("DEPLOY_STAGE") == "prod" evolve logic -> "strict"
 
 drift -> @core.static_buffer
 emit user.id, @data.archive
