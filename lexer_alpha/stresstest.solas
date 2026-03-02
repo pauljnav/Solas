@@ -1,63 +1,24 @@
-// SOLAS ALPHA ARCHITECTURE TEST v0.1
+// Testing Solas v1.1 Compliance (Stress Test)
 // Purpose: Exercise Lexer, Semantic Guard, and Refract Engine
 
-shape GeoLocation {
-    lat: Float
-    lng: Float
-}
+shape GeoLocation
+    lat: Number
+    lng: Number
 
 shape Telemetry
     id: UUID
     origin: GeoLocation
-    load: Int if value < 100 and value > 0
+    on load < 100 evolve logic -> "safe"
 
-
-stream @net.ingress
+stream @net.ingress as user
     shape Telemetry
+    refract Telemetry
+        on latency > 50 and @env.MODE == "adaptive" evolve logic -> "fast"
 
-    // Test: Complexity Guard (exactly 2 operators)
-    refract if latency > 50ms and @env.MODE == "adaptive" or throughput < 1kb
-
-    // Test: @env Escape Hatch & Nested Property Access
-    emit @env("CLOUD-PROVIDER"), origin.lat
-
-    // Test: Hand-off Pattern (Linear Flow)
+    emit @env("CLOUD_PROVIDER"), user.origin.lat
     emit @core.process_pipe
 
 stream @core.process_pipe
     shape Telemetry
-
-    // Test: Deterministic Drift with fallback
-    drift if not @core.healthy -> @core.fallback_stable
-
-    // Test: Resource mapping
+    on not @core.healthy drift -> @core.fallback_stable
     emit @data.warehouse, @net.audit_log
-
-// SOLAS ALPHA ARCHITECTURE TEST v0.2
-// Purpose: Exercise EBNF compliance and Dark Logic rejection.
-
-shape Telemetry {
-    id: UUID
-    load: Int if value < 100 and value > 0
-}
-
-stream @net.ingress
-    shape Telemetry
-
-    // --- VALID LOGIC (EBNF Compliant) ---
-    refract if latency > 50ms and @env.MODE == "adaptive"
-
-    // --- DARK LOGIC TEST (Should trigger invalid highlighting) ---
-    // Rule: 'or' splits intent
-    refract if latency > 200ms or errors > 5
-
-    // Rule: No implicit state/mutation
-    refract if load++ > 10
-
-    // Rule: No hidden branching (Ternaries)
-    emit status == "ok" ? @core.green : @core.red
-
-    // Rule: No low-level bitwise operations
-    refract if flags & 0x01
-
-    drift if not @core.healthy -> @core.fallback_stable
