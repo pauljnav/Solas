@@ -1,10 +1,11 @@
-// Testing Solas Alpha v0.1
-stream @net.ingress
-shape UserProfile {
-    id: UUID
-    token: @env.AUTH_TOKEN
-}
+// Testing Solas v1.1 Compliance
 
-refract if latency > 50ms and @env("DEPLOY-STAGE") == "prod"
-drift -> @core.static_buffer
+stream @net.ingress as user
+    shape UserProfile
+        id: UUID
+    on error -> drift to @core.static_buffer
+
+refract UserProfile
+    on latency > 50 and @env("DEPLOY_STAGE") == "prod" evolve logic -> "strict"
+
 emit user.id, @data.archive
