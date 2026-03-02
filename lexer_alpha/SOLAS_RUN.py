@@ -1,34 +1,40 @@
 import sys
 import os
-
 from solas_lexer import SolasLexer
 from solas_parser import SolasParser
 
 def run_compiler(filepath):
+    if not os.path.exists(filepath):
+        print(f"[!] File not found: {filepath}")
+        return
+
     try:
         with open(filepath, 'r') as f:
             code = f.read()
 
-        # Phase 1: Lexical Analysis
+        # Phase 1: Lexing
         lexer = SolasLexer()
         tokens = list(lexer.tokenize(code))
-        print(f"[*] Lexer: Generated {len(tokens)} tokens.")
 
-        # Phase 2: Syntax Analysis (Parsing)
+        # Phase 2: Parsing
         parser = SolasParser(tokens)
         ast = parser.parse()
-        print(f"[*] Parser: Successfully built AST with {len(ast)} nodes.")
 
-        # Phase 3: Inspect the AST
-        for node in ast:
-            print(f"    -> {node}")
+        # Phase 3: Reporting
+        print(f"\n--- SOLAS BUILD REPORT: {os.path.basename(filepath)} ---")
+        if not ast:
+            print("Status: Empty AST.")
+        else:
+            for node in ast:
+                print(f"AST Root: {node}")
+        print("--- END REPORT ---\n")
 
     except Exception as e:
-        print(f"[!] ERROR: {e}")
+        print(f"[!] COMPILER ERROR: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: py solas_run.py <file.solas>")
+        print("Usage: py SOLAS_RUN.py <your_file.solas>")
     else:
         run_compiler(sys.argv[1])
