@@ -1,74 +1,113 @@
 import re
 import sys
-from typing import NamedTuple, Generator
+from typing import NamedTuple, Generator, List, Final
+
+class SolasLexicalError(Exception):
+    """Total Lockdown violation."""
+    pass
+
+class Token(NamedTuple):
+    type: str
+    value: str
+    line: int
+    column: int
 
 class SolasLexer:
     """
-    Solas Alpha Lexer v0.2
-    Enforces: Intent-driven tokens, @resource mapping, and complexity limits.
-    and
+    Solas Lexer v1.1 - Depth-Sync Implementation.
+    Mathematically synchronizes block depth to the 4-space mandate.
     """
+    INDENT_SIZE: Final[int] = 4
+
     def __init__(self):
+        self.indent_stack: List[int] = [0] # Stack stores 'depth' levels (0, 1, 2...)
+
         self.rules = [
-            # 1. HIGH PRIORITY: PROHIBITED (Dark Logic)
-            ('ILLEGAL_OR',      r'\bor\b'),
-            ('ILLEGAL_STATE',   r'\+\+|--|[+\-*/%&|^]='),
-            ('ILLEGAL_BRANCH',  r'\?'),
-            ('ILLEGAL_BITWISE', r'[&|^~]|<<|>>'),
-
-            # 2. STRINGS & COMMENTS (Literal isolation)
-            ('COMMENT',         r'//.*'),
-            ('STRING',          r'"[^"]*"'), # [cite: 83]
-
-            # 3. RESOURCE POINTERS (EBNF Sec 8)
-            ('RESOURCE_ROOT',   r'@(net|data|math|core|env|cache)\b'), # [cite: 41-46]
-
-            # 4. KEYWORDS & TYPES (EBNF Sec 11)
-            ('KEYWORD',         r'\b(stream|emit|grow|refract|shape|drift|if|on|to|as|init|step|while|evolve|logic|and)\b'), # [cite: 73-75]
-            ('TYPE',            r'\b(String|Number|Boolean|UUID|Blob)\b'), # [cite: 32-36]
-
-            # 5. OPERATORS & PUNCTUATION (EBNF Sec 10)
-            ('NUMBER',          r'\d+(\.\d+)?([eE][+-]?\d+)?'), # [cite: 84 extended]
-            ('FLOW_OP',         r'->'), # [cite: 85]
-            ('COMPARATOR',      r'==|!=|>=|<=|>|<|\bis\b(\s+not)?'), # [cite: 65, 78-79]
-            ('IDENTIFIER',      r'[a-zA-Z_][a-zA-Z0-9_]*'), #
-
-            # 6. STRUCTURAL TOKENS
-            ('LBRACE',          r'\{'),
-            ('RBRACE',          r'\}'),
-            ('LPAREN',          r'\('),
-            ('RPAREN',          r'\)'),
-            ('LBRACKET',        r'\['),
-            ('RBRACKET',        r'\]'),
-            ('COLON',           r':'), # [cite: 85]
-            ('COMMA',           r','), # [cite: 85]
-            ('DOT',             r'\.'), # [cite: 85]
-
-            # 7. WHITESPACE (Significant for INDENT/DEDENT)
-            ('NEWLINE',         r'\n'),
-            ('SKIP',            r'[ \t]+'),
-
-            # 8. THE LOCKDOWN: Anything else is a Hard Mismatch
-            ('MISMATCH',        r'.'),
+            ('DEPRECATED',  r'[\{\}]'),
+            ('ILLEGAL_LOG', r'\b(or|if|else|elif)\b|\?|\+\+|--|[+\-*/%&|^]='),
+            ('COMMENT',     r'//.*'),
+            ('STRING',      r'"[^"]*"'),
+            ('RESOURCE',    r'@(net|data|math|core|env|cache)\b'),
+            ('KEYWORD',     r'\b(stream|emit|grow|refract|shape|drift|on|error|to|as|init|step|while|evolve|logic|and)\b'),
+            ('TYPE',        r'\b(String|Number|Boolean|UUID|Blob)\b'),
+            ('NUMBER',      r'\d+(\.\d+)?([eE][+-]?\d+)?'),
+            ('COMPARATOR',  r'==|!=|>=|<=|>|<|\bis\b(\s+not)?'),
+            ('FLOW_OP',     r'->'),
+            ('ID',          r'[a-zA-Z_][a-zA-Z0-9_]*'),
+            ('LPAREN',      r'\('),
+            ('RPAREN',      r'\)'),
+            ('COLON',       r':'),
+            ('COMMA',       r','),
+            ('DOT',         r'\.'),
+            ('NEWLINE',     r'\n'),
+            ('SKIP',        r'[ ]+'),
+            ('MISMATCH',    r'.'),
         ]
-        self.regex = re.compile('|'.join('(?P<%s>%s)' % pair for pair in self.rules))
+        self.master_pattern = re.compile('|'.join(f'(?P<{n}>{p})' for n, p in self.rules))
 
-    def tokenize(self, code):
-        for match in self.regex.finditer(code):
-            kind = match.lastgroup
-            value = match.group()
-            if kind in ('SKIP', 'COMMENT', 'NEWLINE'): continue
-            yield kind, value
+    def _sync_depth(self, line: str, line_num: int) -> Generator[Token, None, None]:
+        """Synchronizes current line indentation depth with the stack."""
+        if '\t' in line:
+            raise SolasLexicalError(f"Line {line_num}: Tabs are forbidden.")
+
+        # Calculate depth index
+        leading_spaces = len(re.match(r'^[ ]*', line).group(0))
+        depth, partial = divmod(leading_spaces, self.INDENT_SIZE)
+
+        if partial:
+            raise SolasLexicalError(f"Line {line_num}: Indent ({leading_spaces}) is not a multiple of {self.INDENT_SIZE}.")
+
+        current_depth = len(self.indent_stack) - 1
+
+        # Level Sync: INDENT
+        while depth > current_depth:
+            current_depth += 1
+            self.indent_stack.append(current_depth)
+            yield Token('INDENT', ' ' * self.INDENT_SIZE, line_num, current_depth * self.INDENT_SIZE)
+
+        # Level Sync: DEDENT
+        while depth < current_depth:
+            self.indent_stack.pop()
+            current_depth -= 1
+            yield Token('DEDENT', '', line_num, leading_spaces)
+
+    def tokenize(self, code: str) -> Generator[Token, None, None]:
+        lines = code.splitlines()
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith('//'):
+                continue
+
+            # 1. Structural Sync
+            yield from self._sync_depth(line, i)
+
+            # 2. Token Matching
+            for match in self.master_pattern.finditer(line.lstrip(' ')):
+                kind = match.lastgroup
+                val = match.group()
+                col = match.start() + (len(line) - len(line.lstrip(' ')))
+
+                if kind in ('SKIP', 'COMMENT'): continue
+                if kind == 'DEPRECATED': raise SolasLexicalError(f"Line {i}: Braces deprecated.")
+                if kind == 'ILLEGAL_LOG': raise SolasLexicalError(f"Line {i}: Dark Logic '{val}' detected.")
+                if kind == 'MISMATCH': raise SolasLexicalError(f"Line {i}: Illegal character '{val}'.")
+
+                yield Token(kind, val, i, col)
+            yield Token('NEWLINE', '\n', i, len(line))
+
+        # Final EOF dedents
+        while len(self.indent_stack) > 1:
+            self.indent_stack.pop()
+            yield Token('DEDENT', '', len(lines), 0)
+        yield Token('EOF', '', len(lines), 0)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python solas_compiler.py <file.solas>")
+    if len(sys.argv) < 2: sys.exit(1)
+    try:
+        with open(sys.argv[1], 'r') as f:
+            lexer = SolasLexer()
+            for t in lexer.tokenize(f.read()):
+                print(f"{t.line}:{t.column}\t{t.type:<15} | {repr(t.value)}")
+    except SolasLexicalError as e:
+        print(f"LOCKDOWN ERROR: {e}", file=sys.stderr)
         sys.exit(1)
-
-    with open(sys.argv[1], 'r') as f:
-        content = f.read()
-        lexer = SolasLexer()
-        print(f"{'TOKEN TYPE':<15} | {'VALUE'}")
-        print("-" * 30)
-        for kind, val in lexer.tokenize(content):
-            print(f"{kind:<15} | {val}")
