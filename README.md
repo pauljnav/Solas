@@ -210,4 +210,4 @@ To enable Solas in your AI editor, add the following to your system instructions
 
 ## License
 
-Copyright (c) 2026 Paul Naughton. Distributed under the MIT License.
+Copyright (c) Paul Naughton. Distributed under the MIT License.
