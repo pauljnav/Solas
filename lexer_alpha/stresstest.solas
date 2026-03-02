@@ -6,11 +6,11 @@ shape GeoLocation {
     lng: Float
 }
 
-shape Telemetry {
+shape Telemetry
     id: UUID
     origin: GeoLocation
     load: Int if value < 100 and value > 0
-}
+
 
 stream @net.ingress
     shape Telemetry
