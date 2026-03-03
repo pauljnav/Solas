@@ -1,6 +1,6 @@
 from typing import List, Any
 
-# Solas Parser v1.1.3 | Security-First Recursive Descent
+# Solas Parser v1.1.4 | Security-First Recursive Descent
 # ------------------------------------------------------
 # Enforces Solas Alpha Language Constraints:
 # 1. Linear Flow: Prevents nested 'stream' definitions.
