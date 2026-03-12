@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 4
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 5
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -141,11 +141,23 @@ refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
 
 // ============================================================
 // 6. SHAPE STATEMENT
+// Constrains data to a named, versioned semantic structure.
+// All shapes must be named — anonymous inline shapes not permitted.
+// Sub-structures defined as separate named shapes — Referential Pattern.
+// Version suffix is mandatory on all shape definitions.
+// Unknown fields are captured automatically in __additional as JSON.
+//
+// Examples:
+//   shape UserProfile v1
+//       id: UUID
+//       name: String
 // ============================================================
 
-shape_stmt      ::= "shape" IDENTIFIER block
+shape_stmt      ::= "shape" IDENTIFIER VERSION shape_block
 
-shape_ref       ::= "shape" IDENTIFIER
+shape_block     ::= NEWLINE INDENT { field_def | comment | NEWLINE } DEDENT
+
+shape_ref       ::= "shape" IDENTIFIER VERSION         // reference inside stream block
 
 field_def       ::= IDENTIFIER ":" type_ref [ "," ]
 
