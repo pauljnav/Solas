@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 1
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 2
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -17,7 +17,6 @@ statement       ::= stream_stmt
                   | grow_stmt
                   | refract_stmt
                   | shape_stmt
-                  | drift_stmt
                   | comment
 
 block           ::= NEWLINE INDENT { statement | NEWLINE } DEDENT
@@ -27,17 +26,56 @@ block           ::= NEWLINE INDENT { statement | NEWLINE } DEDENT
 // ============================================================
 // Initiates async/continuous data flow from a resource.
 // Blocks are defined by keywords and indentation (exactly 4 spaces).
+// Nesting stream blocks is invalid — use the Hand-off Pattern.
+// The 'as' alias binds the stream result for use in emit and
+// downstream streams. Streams without an alias have no
+// referenceable result.
+//
+// Examples:
+//   stream @net.api("user/1") as user
+//       shape UserProfile v1
+//       on error -> drift to @cache.last_user
+//
+//   stream @core.lookup_pipe as posts
+//       shape PostList v1
+//       on shape_warning -> emit @core.audit_log
+//       on shape_error -> emit @core.error_pipe
+//
+// Hand-off Pattern:
+//   stream @net.api("user/1") as user
+//       shape UserProfile v2 -> @core.v2_pipe
+//       shape UserProfile v1 -> @core.v1_pipe
+//       on error -> drift to @cache.last_user
+//       emit @core.posts_pipe
+//   stream @core.posts_pipe as posts
+//       shape PostList v1
+//       on shape_error -> emit @core.error_pipe
+//   emit user.name, posts
 
 stream_stmt     ::= "stream" resource_expr [ "as" IDENTIFIER ] stream_block
 
 stream_block    ::= NEWLINE INDENT { stream_body_stmt | NEWLINE } DEDENT
 
-stream_body_stmt ::= shape_ref
+stream_body_stmt ::= shape_version_route
+                   | shape_ref
                    | drift_stmt
+                   | stream_event_handler
                    | emit_stmt
                    | refract_stmt
                    | modifier_call
                    | comment
+
+// Shape version routing — first match wins, most specific declared first
+shape_version_route ::= "shape" IDENTIFIER VERSION "->" resource_expr
+
+// Stream event handlers
+stream_event_handler ::= "on" stream_event "->" ( drift_target | emit_stmt )
+
+stream_event    ::= "error"
+                  | "shape_warning"
+                  | "shape_error"
+
+drift_target    ::= "drift" "to" resource_expr
 
 // ============================================================
 // 3. EMIT STATEMENT
@@ -154,6 +192,7 @@ IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]*
 STRING          ::= '"' { any character except '"' } '"'
 NUMBER          ::= [0-9]+ ( "." [0-9]+ )?
 BOOLEAN         ::= "true" | "false"
+VERSION         ::= "v" [0-9]+                        // e.g. v1, v2, v3
 
 NEWLINE         ::= "\n" | "\r\n"
 INDENT          ::= "Virtual token: Increase of exactly 4 spaces"
