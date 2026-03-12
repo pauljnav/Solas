@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 5
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 6
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -161,7 +161,31 @@ shape_ref       ::= "shape" IDENTIFIER VERSION         // reference inside strea
 
 field_def       ::= IDENTIFIER ":" type_ref [ "," ]
 
-type_ref        ::= "String" | "Number" | "Boolean" | "UUID" | "Blob" | IDENTIFIER
+// Type system
+type_ref        ::= primitive_type
+                  | semantic_type
+                  | collection_type
+                  | IDENTIFIER                         // reference to another named shape
+
+primitive_type  ::= "String"
+                  | "Int"    | "Int8"   | "Int16"  | "Int32"  | "Int64"
+                  | "UInt"   | "UInt8"  | "UInt16" | "UInt32" | "UInt64"
+                  | "Float"  | "Float32"| "Float64"
+                  | "Decimal"
+                  | "Boolean"
+                  | "Blob"
+
+semantic_type   ::= "Email"
+                  | "URL"
+                  | "Date"
+                  | "Time"
+                  | "DateTime"
+                  | "E164"
+                  | "UUID"
+                  | "PostalCode"
+
+collection_type ::= "[" type_ref "]"                  // required collection, items always present
+                  | "[" type_ref ":nullable" "]"      // required collection, items may be null
 
 // ============================================================
 // 7. DRIFT STATEMENT
@@ -276,7 +300,11 @@ comment         ::= "//" { any character } NEWLINE
 
 // Control     : stream, emit, grow, refract, drift, shape
 // Sub-clauses : init, step, on, evolve, logic, to, with, as
-// Types       : String, Number, Boolean, UUID, Blob
+// Types       : String, Int, Int8, Int16, Int32, Int64,
+//               UInt, UInt8, UInt16, UInt32, UInt64,
+//               Float, Float32, Float64, Decimal,
+//               Boolean, Blob, Email, URL, Date, Time,
+//               DateTime, E164, UUID, PostalCode
 // Operators   : is, is not, and
 // Resources   : @net, @data, @math, @core, @env, @cache
 // Connectors  : pulse, request, api, secure, retry, mirror, store, recall, drop, tail, head
