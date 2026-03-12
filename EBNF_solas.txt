@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 8
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 9
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -247,7 +247,7 @@ data_action     ::= "store"  "(" expression ")"
 data_modifier   ::= "as" "(" format_type ")"
                   | "on" "(" location_type ")"
 
-format_type     ::= STRING
+format_type     ::= "JSON" | "CSV" | "Blob" | "XML" | STRING  // unquoted keywords; STRING is fallback
 location_type   ::= "disk" | "cloud" | "cache" | STRING
 
 // ============================================================
@@ -353,6 +353,7 @@ comment         ::= "//" { any character } NEWLINE
 //               Float, Float32, Float64, Decimal,
 //               Boolean, Blob, Email, URL, Date, Time,
 //               DateTime, E164, UUID, PostalCode
+// Formats     : JSON, CSV, XML
 // Operators   : is, is not, and
 // Resources   : @net, @data, @math, @core, @env, @cache
 // Connectors  : pulse, request, api, secure, retry, mirror, store, recall, drop, tail, head
