@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 2
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 3
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -79,11 +79,22 @@ drift_target    ::= "drift" "to" resource_expr
 
 // ============================================================
 // 3. EMIT STATEMENT
+// Routes one or more values to the active output buffer as a
+// single logical emission/data packet. Also used as the
+// hand-off mechanism between chained streams.
+//
+// Examples:
+//   emit user.name
+//   emit user.name, user.id
+//   emit fib
+//   emit @core.posts_pipe
+//   emit user.__additional -> @data.store("log").as(JSON)
 // ============================================================
 
-emit_stmt       ::= "emit" emit_target { "," emit_target } [ "with" modifier_call ]
+emit_stmt       ::= "emit" emit_target { "," emit_target } [ "->" resource_expr ] [ "with" modifier_call ]
 
 emit_target     ::= access_expr
+                  | resource_expr
                   | IDENTIFIER
                   | literal
 
