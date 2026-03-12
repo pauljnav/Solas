@@ -1,6 +1,6 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 10
-// Derived from: GRAMMAR_solas.txt and README.md
+// Solas Language — Formal EBNF Grammar Specification v1.2
+// Derived from: GRAMMAR_solas.txt, README.md, and decisions
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
 // ============================================================
@@ -23,11 +23,11 @@ statement       ::= stream_stmt
 
 block           ::= NEWLINE INDENT { statement | NEWLINE } DEDENT
 
+
 // ============================================================
 // 2. STREAM STATEMENT
-// ============================================================
 // Initiates async/continuous data flow from a resource.
-// Blocks are defined by keywords and indentation (exactly 4 spaces).
+// Blocks defined by indentation — exactly 4 spaces.
 // Nesting stream blocks is invalid — use the Hand-off Pattern.
 // The 'as' alias binds the stream result for use in emit and
 // downstream streams. Streams without an alias have no
@@ -53,10 +53,11 @@ block           ::= NEWLINE INDENT { statement | NEWLINE } DEDENT
 //       shape PostList v1
 //       on shape_error -> emit @core.error_pipe
 //   emit user.name, posts
+// ============================================================
 
-stream_stmt     ::= "stream" resource_expr [ "as" IDENTIFIER ] stream_block
+stream_stmt      ::= "stream" resource_expr [ "as" IDENTIFIER ] stream_block
 
-stream_block    ::= NEWLINE INDENT { stream_body_stmt | NEWLINE } DEDENT
+stream_block     ::= NEWLINE INDENT { stream_body_stmt | NEWLINE } DEDENT
 
 stream_body_stmt ::= shape_version_route
                    | shape_ref
@@ -73,11 +74,12 @@ shape_version_route ::= "shape" IDENTIFIER VERSION "->" resource_expr
 // Stream event handlers
 stream_event_handler ::= "on" stream_event "->" ( drift_target | emit_stmt )
 
-stream_event    ::= "error"
-                  | "shape_warning"
-                  | "shape_error"
+stream_event     ::= "error"
+                   | "shape_warning"
+                   | "shape_error"
 
-drift_target    ::= "drift" "to" resource_expr
+drift_target     ::= "drift" "to" resource_expr
+
 
 // ============================================================
 // 3. EMIT STATEMENT
@@ -93,26 +95,42 @@ drift_target    ::= "drift" "to" resource_expr
 //   emit user.__additional -> @data.store("log").as(JSON)
 // ============================================================
 
-emit_stmt       ::= "emit" emit_target { "," emit_target } [ "->" resource_expr ] [ "with" modifier_call ]
+emit_stmt        ::= "emit" emit_target { "," emit_target } [ "->" resource_expr ] [ "with" modifier_call ]
 
-emit_target     ::= access_expr
-                  | resource_expr
-                  | IDENTIFIER
-                  | literal
+emit_target      ::= access_expr
+                   | resource_expr
+                   | IDENTIFIER
+                   | literal
+
 
 // ============================================================
 // 4. GROW STATEMENT
+// Handles iterative expansion and organic recursion.
+// 'to N' means exactly N iterations.
+// Result length = len(init) + N.
+//
+// Examples:
+//   grow fib to 10
+//       init [0, 1]
+//       step: tail(2).sum
+//
+//   grow primes while count < 100
+//       init [2]
+//       step: next_prime
 // ============================================================
 
-grow_stmt       ::= "grow" IDENTIFIER grow_bound grow_block
+grow_stmt        ::= "grow" IDENTIFIER grow_bound grow_block
 
-grow_block      ::= NEWLINE INDENT init_clause step_clause { comment | NEWLINE } DEDENT
+grow_block       ::= NEWLINE INDENT init_clause step_clause { comment | NEWLINE } DEDENT
 
-grow_bound      ::= "to" NUMBER | "while" condition
+grow_bound       ::= "to" NUMBER                    // exactly N iterations; result = len(init) + N
+                   | "while" condition               // run until condition is false
 
-init_clause     ::= "init" list_literal
-step_clause     ::= "step" ":" step_expr
-step_expr       ::= relative_index "." IDENTIFIER | expression
+init_clause      ::= "init" list_literal
+step_clause      ::= "step" ":" step_expr
+step_expr        ::= relative_index "." IDENTIFIER  // e.g. tail(2).sum
+                   | expression
+
 
 // ============================================================
 // 5. REFRACT STATEMENT
@@ -135,11 +153,12 @@ step_expr       ::= relative_index "." IDENTIFIER | expression
 //          memory > 80: evolve logic -> "switch to @cache"
 // ============================================================
 
-refract_stmt    ::= "refract" IDENTIFIER refract_block
+refract_stmt     ::= "refract" IDENTIFIER refract_block
 
-refract_block   ::= NEWLINE INDENT { refract_rule | NEWLINE | comment } DEDENT
+refract_block    ::= NEWLINE INDENT { refract_rule | NEWLINE | comment } DEDENT
 
-refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
+refract_rule     ::= "on" condition ":" "evolve" "logic" "->" STRING
+
 
 // ============================================================
 // 6. SHAPE STATEMENT
@@ -147,6 +166,8 @@ refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
 // All shapes must be named — anonymous inline shapes not permitted.
 // Sub-structures defined as separate named shapes — Referential Pattern.
 // Version suffix is mandatory on all shape definitions.
+// Validation produces shape_warning (numeric range) or
+// shape_error (type or string violation).
 // Unknown fields are captured automatically in __additional as JSON.
 //
 // Examples:
@@ -160,56 +181,65 @@ refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
 //       score: Float (0.0,1.0)
 // ============================================================
 
-shape_stmt      ::= "shape" IDENTIFIER VERSION shape_block
+shape_stmt       ::= "shape" IDENTIFIER VERSION shape_block
 
-shape_block     ::= NEWLINE INDENT { field_def | comment | NEWLINE } DEDENT
+shape_block      ::= NEWLINE INDENT { field_def | comment | NEWLINE } DEDENT
 
-shape_ref       ::= "shape" IDENTIFIER VERSION         // reference inside stream block
+shape_ref        ::= "shape" IDENTIFIER VERSION         // reference inside stream block
 
-field_def       ::= IDENTIFIER ":" type_ref [ constraint ] NEWLINE                       // required field
-                  | IDENTIFIER "?" type_ref [ constraint ] [ "=" literal ] NEWLINE       // optional field
+field_def        ::= IDENTIFIER ":" type_ref [ constraint ] NEWLINE                        // required field
+                   | IDENTIFIER "?" type_ref [ constraint ] [ "=" literal ] NEWLINE        // optional field
 
 // Type system
-type_ref        ::= primitive_type
-                  | semantic_type
-                  | collection_type
-                  | IDENTIFIER                         // reference to another named shape
+type_ref         ::= primitive_type
+                   | semantic_type
+                   | collection_type
+                   | IDENTIFIER                         // reference to another named shape
 
-primitive_type  ::= "String"
-                  | "Int"    | "Int8"   | "Int16"  | "Int32"  | "Int64"
-                  | "UInt"   | "UInt8"  | "UInt16" | "UInt32" | "UInt64"
-                  | "Float"  | "Float32"| "Float64"
-                  | "Decimal"
-                  | "Boolean"
-                  | "Blob"
+primitive_type   ::= "String"
+                   | "Int"    | "Int8"   | "Int16"  | "Int32"  | "Int64"
+                   | "UInt"   | "UInt8"  | "UInt16" | "UInt32" | "UInt64"
+                   | "Float"  | "Float32"| "Float64"
+                   | "Decimal"
+                   | "Boolean"
+                   | "Blob"
 
-semantic_type   ::= "Email"
-                  | "URL"
-                  | "Date"
-                  | "Time"
-                  | "DateTime"
-                  | "E164"
-                  | "UUID"
-                  | "PostalCode"
+semantic_type    ::= "Email"
+                   | "URL"
+                   | "Date"
+                   | "Time"
+                   | "DateTime"
+                   | "E164"
+                   | "UUID"
+                   | "PostalCode"
 
-collection_type ::= "[" type_ref "]"                  // required collection, items always present
-                  | "[" type_ref ":nullable" "]"       // required collection, items may be null
+collection_type  ::= "[" type_ref "]"                  // required collection, items always present
+                   | "[" type_ref ":nullable" "]"       // required collection, items may be null
 
 // Constraints — inclusive range bounds, positional min/max
 // One-sided: (1,) means min 1, no upper bound. (,100) means no lower bound, max 100.
-constraint      ::= "(" [ NUMBER ] "," [ NUMBER ] ")"
+constraint       ::= "(" [ NUMBER ] "," [ NUMBER ] ")"
+
 
 // ============================================================
 // 7. DRIFT STATEMENT
+// Mandatory fallback / error recovery path.
+// Used as a stream event handler inside stream blocks.
+//
+// Examples:
+//   on error -> drift to @cache.last_user
+//   on error -> drift to @data.recall("backup")
 // ============================================================
 
-drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
+drift_stmt       ::= "on" "error" "->" "drift" "to" resource_expr
+
 
 // ============================================================
 // 8. ENUM STATEMENT
-// Named enumeration with an explicit backing type.
-// Members may optionally assign a literal value.
-// Backing type determines valid literal — String, Int, Email, E164, etc.
+// Named, typed, flat enumeration of constant values.
+// Type declared with colon after identifier.
+// String enum members are implied by name.
+// Numeric and semantic type members require explicit = assignment.
 //
 // Examples:
 //   enum OrderStatus:String
@@ -221,16 +251,21 @@ drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
 //       ok = 200
 //       not_found = 404
 //
+//   enum SupportTeam:Email
+//       billing = "billing@company.com"
+//       technical = "tech@company.com"
+//
 //   enum SupportLines:E164
 //       ireland = "+35318765432"
 //       uk = "+441632960123"
 // ============================================================
 
-enum_stmt       ::= "enum" IDENTIFIER ":" type_ref enum_block
+enum_stmt        ::= "enum" IDENTIFIER ":" type_ref enum_block
 
-enum_block      ::= NEWLINE INDENT { enum_member | NEWLINE | comment } DEDENT
+enum_block       ::= NEWLINE INDENT { enum_member | NEWLINE | comment } DEDENT
 
-enum_member     ::= IDENTIFIER [ "=" literal ] NEWLINE
+enum_member      ::= IDENTIFIER [ "=" literal ] NEWLINE
+
 
 // ============================================================
 // 9. HASHMAP STATEMENT
@@ -249,11 +284,12 @@ enum_member     ::= IDENTIFIER [ "=" literal ] NEWLINE
 //       technical: "tech@company.com"
 // ============================================================
 
-hashmap_stmt    ::= "hashmap" IDENTIFIER "[" type_ref "," type_ref "]" hashmap_block
+hashmap_stmt     ::= "hashmap" IDENTIFIER "[" type_ref "," type_ref "]" hashmap_block
 
-hashmap_block   ::= NEWLINE INDENT { hashmap_entry | NEWLINE | comment } DEDENT
+hashmap_block    ::= NEWLINE INDENT { hashmap_entry | NEWLINE | comment } DEDENT
 
-hashmap_entry   ::= IDENTIFIER ":" literal NEWLINE
+hashmap_entry    ::= IDENTIFIER ":" literal NEWLINE
+
 
 // ============================================================
 // 10. RESOURCE EXPRESSIONS
@@ -269,50 +305,59 @@ hashmap_entry   ::= IDENTIFIER ":" literal NEWLINE
 //   @env("MY-SECRET-KEY")
 // ============================================================
 
-resource_expr   ::= resource_root { "." resource_call }
-                  | "@env" "(" STRING ")"
+resource_expr    ::= resource_root { "." resource_call }
+                   | "@env" "(" STRING ")"              // fallback for non-standard env names
 
-resource_root   ::= "@net" | "@data" | "@math" | "@core" | "@env" | "@cache"
+resource_root    ::= "@net"
+                   | "@data"
+                   | "@math"
+                   | "@core"
+                   | "@env"                             // standard: @env.KEY
+                   | "@cache"
 
-resource_call   ::= net_connector
-                  | net_modifier
-                  | data_action
-                  | data_modifier
-                  | IDENTIFIER [ "(" [ arg_list ] ")" ]    // generic fallback for @math, @core, @env
+resource_call    ::= net_connector
+                   | net_modifier
+                   | data_action
+                   | data_modifier
+                   | IDENTIFIER [ "(" [ arg_list ] ")" ] // generic fallback for @math, @core, @env
 
 // @net connectors
-net_connector   ::= "pulse"   "(" STRING ")"               // heartbeat check
-                  | "request" "(" STRING ")"               // single-shot fetch
-                  | "api"     "(" STRING ")"               // REST API endpoint
+net_connector    ::= "pulse"   "(" STRING ")"           // heartbeat check
+                   | "request" "(" STRING ")"           // single-shot fetch
+                   | "api"     "(" STRING ")"           // REST API endpoint
 
 // @net modifiers
-net_modifier    ::= "secure" "(" resource_expr ")"         // inject auth header
-                  | "retry"  "(" NUMBER ")"                // exponential backoff
-                  | "mirror" "(" STRING ")"                // secondary source
+net_modifier     ::= "secure" "(" resource_expr ")"     // inject auth header
+                   | "retry"  "(" NUMBER ")"            // exponential backoff
+                   | "mirror" "(" STRING ")"            // secondary source
 
 // @data actions
-data_action     ::= "store"  "(" expression ")"
-                  | "recall" "(" expression ")"
-                  | "drop"   "(" expression ")"
+data_action      ::= "store"  "(" expression ")"
+                   | "recall" "(" expression ")"
+                   | "drop"   "(" expression ")"
 
 // @data modifiers
-data_modifier   ::= "as" "(" format_type ")"
-                  | "on" "(" location_type ")"
+data_modifier    ::= "as" "(" format_type ")"
+                   | "on" "(" location_type ")"
 
-format_type     ::= "JSON" | "CSV" | "Blob" | "XML" | STRING  // unquoted keywords; STRING is fallback
-location_type   ::= "disk" | "cloud" | "cache" | STRING
+format_type      ::= "JSON" | "CSV" | "Blob" | "XML" | STRING  // unquoted keywords; STRING is fallback
+location_type    ::= "disk" | "cloud" | "cache" | STRING
+
 
 // ============================================================
 // 11. EXPRESSIONS & CONDITIONS
 // ============================================================
 
-expression      ::= comparison_expr | access_expr | literal | IDENTIFIER
+expression       ::= comparison_expr
+                   | access_expr
+                   | literal
+                   | IDENTIFIER
 
-comparison_expr ::= expression comparator expression
-                  | expression "is" expression
-                  | expression "is" "not" expression
+comparison_expr  ::= expression comparator expression
+                   | expression "is" expression
+                   | expression "is" "not" expression
 
-comparator      ::= ">" | "<" | ">=" | "<="
+comparator       ::= ">" | "<" | ">=" | "<="
 
 // ============================================================
 // CONDITIONS — The Rule of Three
@@ -338,61 +383,71 @@ comparator      ::= ">" | "<" | ">=" | "<="
 //   on status is "refused": evolve logic -> "retry"
 // ============================================================
 
-condition       ::= simple_condition
-                  | simple_condition "and" simple_condition
-                  | simple_condition "and" simple_condition "and" simple_condition
-                  | simple_condition "and" simple_condition "and" simple_condition "and" simple_condition
-                  // Maximum three 'and' operators. Enforced by Semantic Guard.
-                  // Line-wrapped: 'and' at end of line signals continuation to parser.
+condition        ::= simple_condition
+                   | simple_condition "and" simple_condition
+                   | simple_condition "and" simple_condition "and" simple_condition
+                   | simple_condition "and" simple_condition "and" simple_condition "and" simple_condition
+                   // Maximum three 'and' operators. Enforced by Semantic Guard.
+                   // Line-wrapped: 'and' at end of line signals continuation to parser.
 
 simple_condition ::= expression comparator expression
                    | expression "is" expression
                    | expression "is" "not" expression
 
-access_expr     ::= IDENTIFIER { "." IDENTIFIER }
+access_expr      ::= IDENTIFIER { "." IDENTIFIER }     // e.g. user.name, user.__additional
 
-relative_index  ::= "tail" "(" NUMBER ")" | "head" "(" NUMBER ")"
+relative_index   ::= "tail" "(" NUMBER ")"             // last n elements
+                   | "head" "(" NUMBER ")"             // first n elements
 
-arg_list        ::= expression { "," expression }
+arg_list         ::= expression { "," expression }
 
-list_literal    ::= "[" [ expression { "," expression } ] "]"
+list_literal     ::= "[" [ expression { "," expression } ] "]"
 
-literal         ::= STRING | NUMBER | BOOLEAN | list_literal
+literal          ::= STRING | NUMBER | BOOLEAN | list_literal
 
-modifier_call   ::= IDENTIFIER "(" [ arg_list ] ")"
+modifier_call    ::= IDENTIFIER "(" [ arg_list ] ")"
+
 
 // ============================================================
 // 12. LEXICAL TOKENS
 // ============================================================
 
-IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]*
-STRING          ::= '"' { any character except '"' } '"'
-NUMBER          ::= [0-9]+ ( "." [0-9]+ )?
-BOOLEAN         ::= "true" | "false"
-VERSION         ::= "v" [0-9]+                        // e.g. v1, v2, v3
+// --- Identifiers & Literals ---
+IDENTIFIER       ::= [a-zA-Z_][a-zA-Z0-9_]*
+STRING           ::= '"' { any character except '"' } '"'
+NUMBER           ::= [0-9]+ ( "." [0-9]+ )?
+BOOLEAN          ::= "true" | "false"
+VERSION          ::= "v" [0-9]+                        // e.g. v1, v2, v3
 
 // --- Resource Tokens (atomic — @ always fused with name) ---
-RESOURCE        ::= "@net" | "@data" | "@math" | "@core" | "@env" | "@cache"
+RESOURCE         ::= "@net" | "@data" | "@math" | "@core" | "@env" | "@cache"
 
-NEWLINE         ::= "\n" | "\r\n"
-INDENT          ::= "Virtual token: Increase of exactly 4 spaces"
-DEDENT          ::= "Virtual token: Decrease of exactly 4 spaces"
+// --- Structure ---
+NEWLINE          ::= "\n" | "\r\n"
+INDENT           ::= virtual token — increase of exactly 4 spaces
+DEDENT           ::= virtual token — decrease to previous indent level
+EOF              ::= end of input
 
-FLOW_OP         ::= "->"
-DOT             ::= "."
-COLON           ::= ":"
-COMMA           ::= ","
-QUESTION        ::= "?"
-EQUALS          ::= "="
-LBRACKET        ::= "["
-RBRACKET        ::= "]"
-LPAREN          ::= "("
-RPAREN          ::= ")"
+// --- Operators ---
+FLOW_OP          ::= "->"
+DOT              ::= "."
+COLON            ::= ":"
+COMMA            ::= ","
+QUESTION         ::= "?"
+EQUALS           ::= "="
+LBRACKET         ::= "["
+RBRACKET         ::= "]"
+LPAREN           ::= "("
+RPAREN           ::= ")"
 
-comment         ::= "//" { any character } NEWLINE
+// --- Comments (ignored by parser) ---
+comment          ::= "//" { any character } NEWLINE
 
 // --- Whitespace ---
-// MANDATORY: Exactly 4 spaces per indent level. Tabs strictly forbidden.
+// Exactly 4 spaces per indent level. Tabs strictly forbidden.
+// Blank lines inside blocks are ignored by the parser.
+// Horizontal whitespace between tokens is ignored.
+
 
 // ============================================================
 // 13. RESERVED KEYWORDS
@@ -412,6 +467,7 @@ comment         ::= "//" { any character } NEWLINE
 // Connectors     : pulse, request, api, secure, retry, mirror,
 //                  store, recall, drop, tail, head
 // Reserved fields: __additional
+
 // ============================================================
 // END OF GRAMMAR
 // ============================================================
