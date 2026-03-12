@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 3
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 4
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -159,6 +159,16 @@ drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
 
 // ============================================================
 // 8. RESOURCE EXPRESSIONS
+// All system resources accessed via @ global pointers.
+// @ prefix is always fused with resource name as a single token.
+//
+// Examples:
+//   @net.api("user/1")
+//   @net.request("https://example.com").secure(@env.TOKEN).retry(3)
+//   @data.store(payload).as(JSON).on(cloud)
+//   @cache.last_user
+//   @env.TOKEN
+//   @env("MY-SECRET-KEY")
 // ============================================================
 
 resource_expr   ::= resource_root { "." resource_call }
@@ -166,7 +176,33 @@ resource_expr   ::= resource_root { "." resource_call }
 
 resource_root   ::= "@net" | "@data" | "@math" | "@core" | "@env" | "@cache"
 
-resource_call   ::= IDENTIFIER [ "(" [ arg_list ] ")" ]
+resource_call   ::= net_connector
+                  | net_modifier
+                  | data_action
+                  | data_modifier
+                  | IDENTIFIER [ "(" [ arg_list ] ")" ]    // generic fallback for @math, @core, @env
+
+// @net connectors
+net_connector   ::= "pulse"   "(" STRING ")"               // heartbeat check
+                  | "request" "(" STRING ")"               // single-shot fetch
+                  | "api"     "(" STRING ")"               // REST API endpoint
+
+// @net modifiers
+net_modifier    ::= "secure" "(" resource_expr ")"         // inject auth header
+                  | "retry"  "(" NUMBER ")"                // exponential backoff
+                  | "mirror" "(" STRING ")"                // secondary source
+
+// @data actions
+data_action     ::= "store"  "(" expression ")"
+                  | "recall" "(" expression ")"
+                  | "drop"   "(" expression ")"
+
+// @data modifiers
+data_modifier   ::= "as" "(" format_type ")"
+                  | "on" "(" location_type ")"
+
+format_type     ::= STRING
+location_type   ::= "disk" | "cloud" | "cache" | STRING
 
 // ============================================================
 // 9. EXPRESSIONS & CONDITIONS
@@ -204,6 +240,9 @@ STRING          ::= '"' { any character except '"' } '"'
 NUMBER          ::= [0-9]+ ( "." [0-9]+ )?
 BOOLEAN         ::= "true" | "false"
 VERSION         ::= "v" [0-9]+                        // e.g. v1, v2, v3
+
+// --- Resource Tokens (atomic — @ always fused with name) ---
+RESOURCE        ::= "@net" | "@data" | "@math" | "@core" | "@env" | "@cache"
 
 NEWLINE         ::= "\n" | "\r\n"
 INDENT          ::= "Virtual token: Increase of exactly 4 spaces"
