@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 9
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 10
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -17,6 +17,8 @@ statement       ::= stream_stmt
                   | grow_stmt
                   | refract_stmt
                   | shape_stmt
+                  | enum_stmt
+                  | hashmap_stmt
                   | comment
 
 block           ::= NEWLINE INDENT { statement | NEWLINE } DEDENT
@@ -204,7 +206,57 @@ constraint      ::= "(" [ NUMBER ] "," [ NUMBER ] ")"
 drift_stmt      ::= "on" "error" "->" "drift" "to" resource_expr
 
 // ============================================================
-// 8. RESOURCE EXPRESSIONS
+// 8. ENUM STATEMENT
+// Named enumeration with an explicit backing type.
+// Members may optionally assign a literal value.
+// Backing type determines valid literal — String, Int, Email, E164, etc.
+//
+// Examples:
+//   enum OrderStatus:String
+//       pending
+//       active
+//       closed
+//
+//   enum HttpStatus:Int
+//       ok = 200
+//       not_found = 404
+//
+//   enum SupportLines:E164
+//       ireland = "+35318765432"
+//       uk = "+441632960123"
+// ============================================================
+
+enum_stmt       ::= "enum" IDENTIFIER ":" type_ref enum_block
+
+enum_block      ::= NEWLINE INDENT { enum_member | NEWLINE | comment } DEDENT
+
+enum_member     ::= IDENTIFIER [ "=" literal ] NEWLINE
+
+// ============================================================
+// 9. HASHMAP STATEMENT
+// Named key-value map with explicit key and value types.
+// Comma separates key type from value type inside brackets.
+// Members use colon for key-value assignment.
+//
+// Examples:
+//   hashmap Priority[String,Int32]
+//       low: 3
+//       medium: 2
+//       high: 1
+//
+//   hashmap SupportTeam[String,Email]
+//       billing: "billing@company.com"
+//       technical: "tech@company.com"
+// ============================================================
+
+hashmap_stmt    ::= "hashmap" IDENTIFIER "[" type_ref "," type_ref "]" hashmap_block
+
+hashmap_block   ::= NEWLINE INDENT { hashmap_entry | NEWLINE | comment } DEDENT
+
+hashmap_entry   ::= IDENTIFIER ":" literal NEWLINE
+
+// ============================================================
+// 10. RESOURCE EXPRESSIONS
 // All system resources accessed via @ global pointers.
 // @ prefix is always fused with resource name as a single token.
 //
@@ -251,7 +303,7 @@ format_type     ::= "JSON" | "CSV" | "Blob" | "XML" | STRING  // unquoted keywor
 location_type   ::= "disk" | "cloud" | "cache" | STRING
 
 // ============================================================
-// 9. EXPRESSIONS & CONDITIONS
+// 11. EXPRESSIONS & CONDITIONS
 // ============================================================
 
 expression      ::= comparison_expr | access_expr | literal | IDENTIFIER
@@ -310,7 +362,7 @@ literal         ::= STRING | NUMBER | BOOLEAN | list_literal
 modifier_call   ::= IDENTIFIER "(" [ arg_list ] ")"
 
 // ============================================================
-// 10. LEXICAL TOKENS
+// 12. LEXICAL TOKENS
 // ============================================================
 
 IDENTIFIER      ::= [a-zA-Z_][a-zA-Z0-9_]*
@@ -343,20 +395,23 @@ comment         ::= "//" { any character } NEWLINE
 // MANDATORY: Exactly 4 spaces per indent level. Tabs strictly forbidden.
 
 // ============================================================
-// 11. RESERVED KEYWORDS
+// 13. RESERVED KEYWORDS
 // ============================================================
 
-// Control     : stream, emit, grow, refract, drift, shape
-// Sub-clauses : init, step, on, evolve, logic, to, with, as
-// Types       : String, Int, Int8, Int16, Int32, Int64,
-//               UInt, UInt8, UInt16, UInt32, UInt64,
-//               Float, Float32, Float64, Decimal,
-//               Boolean, Blob, Email, URL, Date, Time,
-//               DateTime, E164, UUID, PostalCode
-// Formats     : JSON, CSV, XML
-// Operators   : is, is not, and
-// Resources   : @net, @data, @math, @core, @env, @cache
-// Connectors  : pulse, request, api, secure, retry, mirror, store, recall, drop, tail, head
+// Control        : stream, emit, grow, refract, drift, shape, enum, hashmap
+// Sub-clauses    : init, step, on, evolve, logic, to, with, as, while
+// Events         : error, shape_warning, shape_error
+// Types          : String, Int, Int8, Int16, Int32, Int64,
+//                  UInt, UInt8, UInt16, UInt32, UInt64,
+//                  Float, Float32, Float64, Decimal,
+//                  Boolean, Blob, Email, URL, Date, Time,
+//                  DateTime, E164, UUID, PostalCode
+// Formats        : JSON, CSV, XML
+// Operators      : is, is not, and
+// Resources      : @net, @data, @math, @core, @env, @cache
+// Connectors     : pulse, request, api, secure, retry, mirror,
+//                  store, recall, drop, tail, head
+// Reserved fields: __additional
 // ============================================================
 // END OF GRAMMAR
 // ============================================================
