@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 7
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 8
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -257,13 +257,45 @@ location_type   ::= "disk" | "cloud" | "cache" | STRING
 expression      ::= comparison_expr | access_expr | literal | IDENTIFIER
 
 comparison_expr ::= expression comparator expression
-                  | expression "is" [ "not" ] expression
+                  | expression "is" expression
+                  | expression "is" "not" expression
 
 comparator      ::= ">" | "<" | ">=" | "<="
 
-condition       ::= simple_condition { "and" simple_condition }
+// ============================================================
+// CONDITIONS — The Rule of Three
+//
+// Maximum three 'and' operators (four simple conditions) per condition.
+// Exceeding this is "Dark Logic" — Semantic Guard throws Complexity Overflow.
+// 'or' is not permitted — it splits intent into two separate refract rules.
+//
+// Both inline and line-wrapped forms are equally valid.
+// Line-wrapped: 'and' at end of line signals continuation to parser.
+// Continuation lines must be indented relative to the opening 'on' keyword.
+// Colon on the final condition line signals closure.
+//
+// Dark Logic (Complexity Overflow — invalid):
+//   on a > 1 and b < 2 and c == 3 and d != 4 and e > 0:
+//
+// Correct abstraction:
+//   refract system_check
+//       on @core.system_valid: evolve logic -> "switch to @cache"
+//
+// 'or' splits intent — use two rules:
+//   on status is "timeout": evolve logic -> "retry"
+//   on status is "refused": evolve logic -> "retry"
+// ============================================================
 
-simple_condition ::= comparison_expr
+condition       ::= simple_condition
+                  | simple_condition "and" simple_condition
+                  | simple_condition "and" simple_condition "and" simple_condition
+                  | simple_condition "and" simple_condition "and" simple_condition "and" simple_condition
+                  // Maximum three 'and' operators. Enforced by Semantic Guard.
+                  // Line-wrapped: 'and' at end of line signals continuation to parser.
+
+simple_condition ::= expression comparator expression
+                   | expression "is" expression
+                   | expression "is" "not" expression
 
 access_expr     ::= IDENTIFIER { "." IDENTIFIER }
 
