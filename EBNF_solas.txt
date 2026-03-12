@@ -1,5 +1,5 @@
 // ============================================================
-// Solas Language — Formal EBNF Grammar Specification v1.1
+// Solas Language — Formal EBNF Grammar Specification v1.1 — commit 1
 // Derived from: GRAMMAR_solas.txt and README.md
 // Notation: ::= definition, | alternation, [] optional,
 //           {} zero or more, () grouping, "" terminal
@@ -65,11 +65,30 @@ step_expr       ::= relative_index "." IDENTIFIER | expression
 
 // ============================================================
 // 5. REFRACT STATEMENT
+// Defines a self-modifying logic gate triggered by a condition.
+// Each refract_rule is one trigger with one evolution.
+// 'or' is not permitted — use separate rules for separate intents.
+//
+// Examples:
+//   refract performance
+//       on latency > 200: evolve logic -> "switch to @cache"
+//
+//   refract recovery
+//       on status is "timeout": evolve logic -> "retry"
+//       on status is "refused": evolve logic -> "retry"
+//
+// Line-wrapped condition (continuation — 'and' at end of line):
+//   refract system
+//       on latency > 200 and
+//          errors > 5 and
+//          memory > 80: evolve logic -> "switch to @cache"
 // ============================================================
 
-refract_stmt    ::= "refract" IDENTIFIER block
+refract_stmt    ::= "refract" IDENTIFIER refract_block
 
-refract_rule    ::= "on" condition "evolve" "logic" "->" STRING
+refract_block   ::= NEWLINE INDENT { refract_rule | NEWLINE | comment } DEDENT
+
+refract_rule    ::= "on" condition ":" "evolve" "logic" "->" STRING
 
 // ============================================================
 // 6. SHAPE STATEMENT
